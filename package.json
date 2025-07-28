@@ -1,0 +1,27 @@
+{
+  "name": "lonnymq",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "devDependencies": {
+    "@stylistic/eslint-plugin-ts": "4.2.0",
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "8.26.1",
+    "@typescript-eslint/parser": "8.26.1",
+    "bun-plugin-dts": "^0.3.0",
+    "eslint": "9.22.0",
+    "np": "^10.2.0",
+    "pg": "^8.16.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

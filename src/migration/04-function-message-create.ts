@@ -28,7 +28,7 @@ export const migrationFunctionMessageCreate = {
                     v_message RECORD;
                     v_message_next_dequeue_after TIMESTAMP;
                 BEGIN
-                    v_now := NOW() + INTERVAL '1 MILLISECOND' * p_delay_ms;
+                    v_now := NOW();
 
                     SELECT
                         "max_size",
@@ -90,7 +90,8 @@ export const migrationFunctionMessageCreate = {
                     ) ON CONFLICT ("channel_name", "name") 
                     WHERE "num_attempts" = 0
                     DO UPDATE SET
-                        "id" = EXCLUDED."id"
+                        "channel_name" = EXCLUDED."channel_name",
+                        "name" = EXCLUDED."name"
                     RETURNING
                         "id", 
                         "xmax",
@@ -111,7 +112,7 @@ export const migrationFunctionMessageCreate = {
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
                             "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = v_message."dequeue_after"
+                            "message_next_dequeue_after" = GREATEST(v_now, v_message."dequeue_after")
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET

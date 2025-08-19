@@ -1,4 +1,4 @@
-import { LOCK_MS_DEFAULT, PRIORITY_REDUCTION_MS, DELAY_MS_DEFAULT } from "@src/core/constant"
+import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql, value } from "@src/core/sql"
 import { MessageCreateResultCode } from "@src/migration/04-function-message-create"
@@ -44,21 +44,15 @@ export class MessageCreateCommand {
         content: string,
         lockMs?: number,
         delayMs?: number,
-        priority?: boolean
     }) {
         const name = params.name ?? null
         const lockMs = params.lockMs === undefined
             ? LOCK_MS_DEFAULT
             : Math.max(0, params.lockMs)
 
-        let delayMs : number
-        if (params.priority) {
-            delayMs = -PRIORITY_REDUCTION_MS
-        } else {
-            delayMs = params.delayMs === undefined
-                ? DELAY_MS_DEFAULT
-                : Math.max(0, params.delayMs)
-        }
+        const delayMs = params.delayMs === undefined
+            ? DELAY_MS_DEFAULT
+            : params.delayMs
 
         this.schema = params.schema
         this.channelName = params.channelName

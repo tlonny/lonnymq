@@ -38,7 +38,6 @@ export class QueueMessage {
     async defer(params: {
         databaseClient: DatabaseClient,
         delayMs?: number,
-        priority?: boolean,
         state?: string
     }) : Promise<MessageDeferCommandResult> {
         return new MessageDeferCommand({
@@ -47,7 +46,6 @@ export class QueueMessage {
             dequeueNonce: this.dequeueNonce,
             delayMs: params.delayMs,
             state: params.state,
-            priority: params.priority
         }).execute(params.databaseClient)
     }
 

@@ -1,4 +1,4 @@
-import { DELAY_MS_DEFAULT, PRIORITY_REDUCTION_MS } from "@src/core/constant"
+import { DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql, value } from "@src/core/sql"
 import { MessageDeferResultCode } from "@src/migration/07-function-message-defer"
@@ -38,16 +38,10 @@ export class MessageDeferCommand {
         dequeueNonce: string,
         delayMs?: number,
         state?: string | null
-        priority?: boolean
     }) {
-        let delayMs : number
-        if (params.priority) {
-            delayMs = -PRIORITY_REDUCTION_MS
-        } else {
-            delayMs = params.delayMs === undefined
-                ? DELAY_MS_DEFAULT
-                : Math.max(0, params.delayMs)
-        }
+        const delayMs = params.delayMs === undefined
+            ? DELAY_MS_DEFAULT
+            : params.delayMs
 
         this.schema = params.schema
         this.id = params.id

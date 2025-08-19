@@ -24,7 +24,6 @@ export class QueueChannelMessage {
         lockMs?: number,
         content: string,
         delayMs?: number,
-        priority?: boolean
     }) : Promise<MessageCreateCommandResult> {
         return new MessageCreateCommand({
             schema: this.schema,
@@ -33,7 +32,6 @@ export class QueueChannelMessage {
             content: params.content,
             lockMs: params.lockMs,
             delayMs: params.delayMs,
-            priority: params.priority
         }).execute(params.databaseClient)
     }
 }

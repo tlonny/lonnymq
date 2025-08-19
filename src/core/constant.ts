@@ -1,4 +1,4 @@
-import { fromDays, fromHours, fromSecs } from "@src/core/ms"
+import { fromHours, fromSecs } from "@src/core/ms"
 import { createHash } from "node:crypto"
 
 export class DatabaseConstant {
@@ -18,7 +18,6 @@ export class DatabaseConstant {
 }
 
 export const WAKE_CHANNEL = new DatabaseConstant("WAKE")
-export const PRIORITY_REDUCTION_MS = fromDays(1_000)
 export const USE_WAKE_DEFAULT = false
 export const DELAY_MS_DEFAULT = fromSecs(0)
 export const LOCK_MS_DEFAULT = fromHours(1)

@@ -23,7 +23,6 @@ export class QueueBatchChannelMessage {
         lockMs?: number,
         content: string,
         delayMs?: number,
-        priority?: boolean
     }) : Deferred<MessageCreateCommandResult> {
         const command = new MessageCreateCommand({
             schema: this.schema,
@@ -32,7 +31,6 @@ export class QueueBatchChannelMessage {
             content: params.content,
             lockMs: params.lockMs,
             delayMs: params.delayMs,
-            priority: params.priority
         })
 
         const deferred = new Deferred<MessageCreateCommandResult>()

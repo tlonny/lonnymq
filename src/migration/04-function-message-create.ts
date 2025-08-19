@@ -90,10 +90,11 @@ export const migrationFunctionMessageCreate = {
                         "id" = EXCLUDED."id"
                     RETURNING
                         "id", 
+                        "xmax",
                         "dequeue_after"
                     INTO v_message;
 
-                    IF v_message."id" IS NULL THEN
+                    IF v_message."xmax" != 0 THEN
                         RETURN JSONB_BUILD_OBJECT(
                             'result_code', ${value(MessageCreateResultCode.MESSAGE_DEDUPLICATED)},
                             'id', v_message."id"

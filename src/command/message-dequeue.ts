@@ -13,10 +13,9 @@ type QueryResultMessageDequeued = {
     channel_name: string,
     name: string | null,
     content: string,
-    dequeue_id: string,
+    dequeue_nonce: string,
     state: string | null,
     num_attempts: number
-    lock_ms: number
 }
 
 type QueryResult =
@@ -26,14 +25,13 @@ type QueryResult =
 export type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
     message: {
-        id: string,
+        id: bigint,
         channelName: string,
         name: string | null,
         content: string,
-        dequeueId: string,
+        dequeueNonce: string,
         state: string | null,
         numAttempts: number,
-        lockMs: number
     }
 }
 
@@ -62,19 +60,21 @@ export class MessageDequeueCommand {
         `.value).then(res => res.rows[0].result as QueryResult)
 
         if (result.result_code === MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE) {
-            return { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: result.retry_ms }
+            return {
+                resultType: "MESSAGE_NOT_AVAILABLE",
+                retryMs: result.retry_ms
+            }
         } else if (result.result_code === MessageDequeueResultCode.MESSAGE_DEQUEUED) {
             return {
                 resultType: "MESSAGE_DEQUEUED",
                 message: {
-                    id: result.id,
+                    id: BigInt(result.id),
                     channelName: result.channel_name,
                     name: result.name,
                     content: result.content,
-                    dequeueId: result.dequeue_id,
+                    dequeueNonce: result.dequeue_nonce,
                     state: result.state,
                     numAttempts: result.num_attempts,
-                    lockMs: result.lock_ms
                 }
             }
         } else {

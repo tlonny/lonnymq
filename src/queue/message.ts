@@ -7,35 +7,32 @@ export class QueueMessage {
 
     private readonly schema: string
 
-    readonly id : string
+    readonly id : bigint
     readonly channelName: string
     readonly name: string | null
     readonly content: string
-    readonly dequeueId: string
+    readonly dequeueNonce: string
     readonly state: string | null
     readonly numAttempts: number
-    readonly lockMs: number
 
     constructor(params: {
         schema: string,
-        id: string,
-        dequeueId: string,
+        id: bigint,
+        dequeueNonce: string,
         channelName: string,
         name: string | null,
         content: string,
         state: string | null,
         numAttempts: number,
-        lockMs: number
     }) {
         this.schema = params.schema
         this.id = params.id
         this.channelName = params.channelName
-        this.dequeueId = params.dequeueId
+        this.dequeueNonce = params.dequeueNonce
         this.name = params.name
         this.content = params.content
         this.state = params.state
         this.numAttempts = params.numAttempts
-        this.lockMs = params.lockMs
     }
 
     async defer(params: {
@@ -47,7 +44,7 @@ export class QueueMessage {
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
-            dequeueId: this.dequeueId,
+            dequeueNonce: this.dequeueNonce,
             delayMs: params.delayMs,
             state: params.state,
             priority: params.priority
@@ -60,7 +57,7 @@ export class QueueMessage {
         return new MessageDeleteCommand({
             schema: this.schema,
             id: this.id,
-            dequeueId: this.dequeueId
+            dequeueNonce: this.dequeueNonce
         }).execute(params.databaseClient)
     }
 

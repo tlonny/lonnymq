@@ -18,8 +18,8 @@ export const migrationFunctionMessageCreate = {
                     p_channel_name TEXT,
                     p_name TEXT,
                     p_content TEXT,
-                    p_lock_ms BIGINT,
-                    p_delay_ms BIGINT
+                    p_lock_ms INTEGER,
+                    p_delay_ms INTEGER
                 ) RETURNS JSONB AS $$
                 DECLARE
                     v_now TIMESTAMP;
@@ -32,7 +32,8 @@ export const migrationFunctionMessageCreate = {
 
                     SELECT
                         "max_size",
-                        "max_concurrency"
+                        "max_concurrency",
+                        "release_interval_ms"
                     FROM ${ref(params.schema)}."channel_policy"
                     WHERE "name" = p_channel_name
                     FOR SHARE
@@ -44,6 +45,7 @@ export const migrationFunctionMessageCreate = {
                         "current_concurrency",
                         "max_size",
                         "max_concurrency",
+                        "release_interval_ms",
                         "message_next_id",
                         "message_next_dequeue_after"
                     ) VALUES (
@@ -52,6 +54,7 @@ export const migrationFunctionMessageCreate = {
                         0,
                         v_channel_policy."max_size",
                         v_channel_policy."max_concurrency",
+                        v_channel_policy."release_interval_ms",
                         NULL,
                         NULL
                     ) ON CONFLICT ("name") 

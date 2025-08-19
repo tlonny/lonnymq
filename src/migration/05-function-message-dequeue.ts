@@ -17,7 +17,7 @@ export const migrationFunctionMessageDequeue = {
                 RETURNS JSONB AS $$
                 DECLARE
                     v_now TIMESTAMP;
-                    v_dequeue_id UUID;
+                    v_dequeue_nonce UUID;
                     v_channel_state RECORD;
                     v_message_locked RECORD;
                     v_retry_after TIMESTAMP;
@@ -26,7 +26,7 @@ export const migrationFunctionMessageDequeue = {
                     v_message_next_dequeue_after TIMESTAMP;
                 BEGIN
                     v_now := NOW();
-                    v_dequeue_id := GEN_RANDOM_UUID();
+                    v_dequeue_nonce := GEN_RANDOM_UUID();
 
                     SELECT
                         "id",
@@ -49,7 +49,7 @@ export const migrationFunctionMessageDequeue = {
                         UPDATE ${ref(params.schema)}."message" SET
                             "num_attempts" = v_message_locked."num_attempts" + 1,
                             "dequeue_after" = v_now + (v_message_locked."lock_ms" * INTERVAL '1 millisecond'),
-                            "dequeue_id" = v_dequeue_id
+                            "dequeue_nonce" = v_dequeue_nonce
                         WHERE "id" = v_message_locked."id";
 
                         PERFORM ${ref(params.schema)}."wake"(v_message_locked."lock_ms");
@@ -60,7 +60,7 @@ export const migrationFunctionMessageDequeue = {
                             'channel_name', v_message_locked.channel_name,
                             'state', v_message_locked.state,
                             'name', v_message_locked.name,
-                            'dequeue_id', v_dequeue_id,
+                            'dequeue_nonce', v_dequeue_nonce,
                             'content', v_message_locked.content,
                             'num_attempts', v_message_locked.num_attempts
                         );
@@ -69,6 +69,7 @@ export const migrationFunctionMessageDequeue = {
                     SELECT
                         "id",
                         "name",
+                        "release_interval_ms",
                         "message_next_id",
                         "message_next_dequeue_after",
                         "current_concurrency"
@@ -108,7 +109,7 @@ export const migrationFunctionMessageDequeue = {
                     UPDATE ${ref(params.schema)}."message" SET
                         "is_locked" = TRUE,
                         "num_attempts" = v_message_dequeue."num_attempts" + 1,
-                        "dequeue_id" = v_dequeue_id,
+                        "dequeue_nonce" = v_dequeue_nonce,
                         "dequeue_after" = v_now + (v_message_dequeue."lock_ms" * INTERVAL '1 millisecond')
                     WHERE "id" = v_message_dequeue."id";
 
@@ -127,7 +128,7 @@ export const migrationFunctionMessageDequeue = {
                     IF v_message_next_dequeue."id" IS NOT NULL THEN
                         v_message_next_dequeue_after := GREATEST(
                             v_message_next_dequeue."dequeue_after",
-                            v_now
+                            v_now + (COALESCE(v_channel_state."release_interval_ms", 0) * INTERVAL '1 millisecond')
                         );
 
                         UPDATE ${ref(params.schema)}."channel_state" SET
@@ -148,7 +149,7 @@ export const migrationFunctionMessageDequeue = {
                         'id', v_message_dequeue.id,
                         'channel_name', v_message_dequeue.channel_name,
                         'state', v_message_dequeue.state,
-                        'dequeue_id', v_dequeue_id,
+                        'dequeue_nonce', v_dequeue_nonce,
                         'name', v_message_dequeue.name,
                         'content', v_message_dequeue.content,
                         'num_attempts', v_message_dequeue.num_attempts

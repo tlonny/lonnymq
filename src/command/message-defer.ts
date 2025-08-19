@@ -27,15 +27,15 @@ export type MessageDeferCommandResult =
 
 export class MessageDeferCommand {
     readonly schema: string
-    readonly id: string
-    readonly dequeueId: string
+    readonly id: bigint
+    readonly dequeueNonce: string
     readonly delayMs: number
     readonly state: string | null
 
     constructor(params: {
         schema: string,
-        id: string,
-        dequeueId: string,
+        id: bigint,
+        dequeueNonce: string,
         delayMs?: number,
         state?: string | null
         priority?: boolean
@@ -51,7 +51,7 @@ export class MessageDeferCommand {
 
         this.schema = params.schema
         this.id = params.id
-        this.dequeueId = params.dequeueId
+        this.dequeueNonce = params.dequeueNonce
         this.delayMs = delayMs
         this.state = params.state ?? null
     }
@@ -60,8 +60,8 @@ export class MessageDeferCommand {
         const result = await databaseClient.query(sql`
             SELECT ${ref(this.schema)}."message_defer"(
                 ${value(this.id)},
-                ${value(this.dequeueId)},
-                ${value(this.delayMs)}::BIGINT,
+                ${value(this.dequeueNonce)},
+                ${value(this.delayMs)},
                 ${value(this.state)}
             ) AS "result"
         `.value).then(res => res.rows[0].result as QueryResult)

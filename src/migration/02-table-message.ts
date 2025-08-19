@@ -9,17 +9,16 @@ export const migrationTableMessage = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."message" (
-                    "id" UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
+                    "id" BIGSERIAL NOT NULL,
                     "channel_name" TEXT NOT NULL,
-                    "dequeue_id" UUID,
+                    "dequeue_nonce" UUID,
                     "name" TEXT,
                     "content" TEXT NOT NULL,
                     "state" TEXT,
-                    "lock_ms" BIGINT NOT NULL,
+                    "lock_ms" INTEGER NOT NULL,
                     "is_locked" BOOLEAN NOT NULL DEFAULT FALSE,
-                    "num_attempts" BIGINT NOT NULL DEFAULT 0,
+                    "num_attempts" INTEGER NOT NULL DEFAULT 0,
                     "dequeue_after" TIMESTAMP NOT NULL,
-                    "sweep_after" TIMESTAMP,
                     PRIMARY KEY ("id")
                 );
             `,

@@ -12,7 +12,7 @@ export const migrationFunctionWake = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."wake" (
-                    p_delay_ms BIGINT
+                    p_delay_ms INTEGER
                 ) RETURNS VOID AS $$
                 BEGIN
                     IF ${value(params.useWake)} THEN

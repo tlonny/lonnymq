@@ -44,13 +44,12 @@ export class Queue {
                 message: new QueueMessage({
                     schema: this.schema,
                     id: result.message.id,
-                    dequeueId: result.message.dequeueId,
+                    dequeueNonce: result.message.dequeueNonce,
                     channelName: result.message.channelName,
                     name: result.message.name,
                     content: result.message.content,
                     state: result.message.state,
                     numAttempts: result.message.numAttempts,
-                    lockMs: result.message.lockMs
                 })
             }
         } else {

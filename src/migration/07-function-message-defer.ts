@@ -15,9 +15,9 @@ export const migrationFunctionMessageDefer = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
-                    p_id UUID,
-                    p_dequeue_id UUID,
-                    p_delay_ms BIGINT,
+                    p_id BIGINT,
+                    p_dequeue_nonce UUID,
+                    p_delay_ms INTEGER,
                     p_state TEXT
                 )
                 RETURNS JSONB AS $$
@@ -29,7 +29,7 @@ export const migrationFunctionMessageDefer = {
                     SELECT
                         "id",
                         "channel_name",
-                        "dequeue_id"
+                        "dequeue_nonce"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
@@ -39,7 +39,7 @@ export const migrationFunctionMessageDefer = {
                         RETURN JSONB_BUILD_OBJECT(
                             'result_code', ${value(MessageDeferResultCode.MESSAGE_NOT_FOUND)}
                         );
-                    ELSEIF v_message."dequeue_id" != p_dequeue_id THEN
+                    ELSEIF v_message."dequeue_nonce" != p_dequeue_nonce THEN
                         RETURN JSONB_BUILD_OBJECT(
                             'result_code', ${value(MessageDeferResultCode.MESSAGE_STATE_INVALID)}
                         );

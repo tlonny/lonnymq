@@ -20,14 +20,16 @@ export class QueueBatchChannelPolicy {
     }
 
     set(params : {
-        maxConcurrency: number | null,
-        maxSize: number | null,
+        maxConcurrency?: number | null,
+        maxSize?: number | null,
+        releaseIntervalMs?: number | null
     }) : Deferred<void> {
         const command = new ChannelPolicySetCommand({
             schema: this.schema,
             channelName: this.channelName,
             maxConcurrency: params.maxConcurrency,
-            maxSize: params.maxSize
+            maxSize: params.maxSize,
+            releaseIntervalMs: params.releaseIntervalMs
         })
 
         const deferred = new Deferred<void>()

@@ -1,4 +1,4 @@
-type SqlValue = null | number | string | boolean | Date
+type SqlValue = null | number | string | boolean | bigint | Date
 
 
 export type SqlValueNode<T extends SqlValue> = { nodeType: "VALUE", value: T }
@@ -41,6 +41,8 @@ export const valueEscape = (value: SqlValue): string => {
         return value ? "TRUE" : "FALSE"
     } else if (value instanceof Date) {
         return `'${value.toISOString()}'`
+    } else if (typeof value === "bigint") {
+        return value.toString()
     } else {
         value satisfies never
         throw new Error(`Unsupported value type: ${typeof value}`)

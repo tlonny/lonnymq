@@ -17,14 +17,16 @@ export class QueueChannelPolicy {
 
     set(params : {
         databaseClient: DatabaseClient,
-        maxConcurrency: number | null,
-        maxSize: number | null,
+        maxConcurrency?: number | null,
+        maxSize?: number | null,
+        releaseIntervalMs?: number | null
     }) {
         return new ChannelPolicySetCommand({
             schema: this.schema,
             channelName: this.channelName,
             maxConcurrency: params.maxConcurrency,
-            maxSize: params.maxSize
+            maxSize: params.maxSize,
+            releaseIntervalMs: params.releaseIntervalMs
         }).execute(params.databaseClient)
     }
 

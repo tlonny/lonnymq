@@ -7,24 +7,33 @@ export class ChannelPolicySetCommand {
     readonly channelName: string
     readonly maxSize: number | null
     readonly maxConcurrency: number | null
+    readonly releaseIntervalMs: number | null
     readonly createdAt: Date
 
     constructor(params: {
         schema: string,
         channelName: string,
-        maxSize: number | null,
-        maxConcurrency: number | null
+        maxSize?: number | null,
+        maxConcurrency?: number | null,
+        releaseIntervalMs?: number | null
     }) {
         this.schema = params.schema
         this.channelName = params.channelName
 
-        this.maxConcurrency = params.maxConcurrency === null
-            ? null
-            : Math.max(0, params.maxConcurrency)
+        const maxConcurrency = params.maxConcurrency ?? null
+        this.maxConcurrency = maxConcurrency !== null
+            ? Math.max(0, maxConcurrency)
+            : null
 
-        this.maxSize = params.maxSize === null
-            ? null
-            : Math.max(0, params.maxSize)
+        const maxSize = params.maxSize ?? null
+        this.maxSize = maxSize !== null
+            ? Math.max(0, maxSize)
+            : null
+
+        const releaseIntervalMs = params.releaseIntervalMs ?? null
+        this.releaseIntervalMs = releaseIntervalMs !== null
+            ? Math.max(0, releaseIntervalMs)
+            : null
 
         this.createdAt = new Date()
     }
@@ -41,8 +50,9 @@ export class ChannelPolicySetCommand {
         await databaseClient.query(sql`
             SELECT 1 FROM ${ref(this.schema)}."channel_policy_set"(
                 ${value(this.channelName)},
-                ${value(this.maxSize)}::BIGINT,
-                ${value(this.maxConcurrency)}::BIGINT
+                ${value(this.maxSize)}::INTEGER,
+                ${value(this.maxConcurrency)}::INTEGER,
+                ${value(this.releaseIntervalMs)}::INTEGER
             )
         `.value)
     }

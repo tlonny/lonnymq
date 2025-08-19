@@ -10,12 +10,12 @@ type QueryResult =
 
 export type MessageCreateCommandResultMessageCreated = {
     resultType: "MESSAGE_CREATED",
-    id: string
+    id: bigint
 }
 
 export type MessageCreateCommandResultMessageDeduplicated = {
     resultType: "MESSAGE_DEDUPLICATED",
-    id: string
+    id: bigint
 }
 
 export type MessageCreateCommandResultMessageDropped = {
@@ -75,17 +75,17 @@ export class MessageCreateCommand {
                 ${value(this.channelName)},
                 ${value(this.name)},
                 ${value(this.content)},
-                ${value(this.lockMs)}::BIGINT,
-                ${value(this.delayMs)}::BIGINT
+                ${value(this.lockMs)}::INTEGER,
+                ${value(this.delayMs)}::INTEGER
             ) AS "result"
         `.value).then(res => res.rows[0].result as QueryResult)
 
         if (result.result_code === MessageCreateResultCode.MESSAGE_DROPPED) {
             return { resultType: "MESSAGE_DROPPED" }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_DEDUPLICATED) {
-            return { resultType: "MESSAGE_DEDUPLICATED", id: result.id }
+            return { resultType: "MESSAGE_DEDUPLICATED", id: BigInt(result.id) }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
-            return { resultType: "MESSAGE_CREATED", id: result.id }
+            return { resultType: "MESSAGE_CREATED", id: BigInt(result.id) }
         } else {
             result satisfies never
             throw new Error("Unexpected result")

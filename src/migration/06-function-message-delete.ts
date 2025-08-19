@@ -15,18 +15,19 @@ export const migrationFunctionMessageDelete = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_delete" (
-                    p_id UUID,
-                    p_dequeue_id UUID
+                    p_id BIGINT,
+                    p_dequeue_nonce UUID
                 )
                 RETURNS JSONB AS $$
                 DECLARE
+                    v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
                 BEGIN
                     SELECT
                         "id",
                         "channel_name",
-                        "dequeue_id"
+                        "dequeue_nonce"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
@@ -36,11 +37,18 @@ export const migrationFunctionMessageDelete = {
                         RETURN JSONB_BUILD_OBJECT(
                             'result_code', ${value(MessageDeleteResultCode.MESSAGE_NOT_FOUND)}
                         );
-                    ELSEIF v_message."dequeue_id" != p_dequeue_id THEN
+                    ELSEIF v_message."dequeue_nonce" != p_dequeue_nonce THEN
                         RETURN JSONB_BUILD_OBJECT(
                             'result_code', ${value(MessageDeleteResultCode.MESSAGE_STATE_INVALID)}
                         );
                     END IF;
+
+                    SELECT
+                        "id"
+                    FROM ${ref(params.schema)}."channel_policy"
+                    WHERE "name" = v_message."channel_name"
+                    FOR SHARE
+                    INTO v_channel_policy;
 
                     SELECT
                         "id",
@@ -51,7 +59,7 @@ export const migrationFunctionMessageDelete = {
                     FOR UPDATE
                     INTO v_channel_state;
 
-                    IF v_channel_state."current_size" = 1 THEN
+                    IF v_channel_policy."id" IS NULL AND v_channel_state."current_size" = 1 THEN
                         DELETE FROM ${ref(params.schema)}."channel_state"
                         WHERE "id" = v_channel_state."id";
                     ELSE

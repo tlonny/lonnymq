@@ -35,7 +35,8 @@ export const migrationTableMessage = {
                 CREATE INDEX "message_dequeue_ix"
                 ON ${ref(params.schema)}."message" (
                     "channel_name",
-                    "dequeue_after" ASC
+                    "dequeue_after" ASC,
+                    "id" ASC
                 ) WHERE NOT "is_locked";
             `,
 

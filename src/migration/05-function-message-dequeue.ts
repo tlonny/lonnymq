@@ -121,7 +121,7 @@ export const migrationFunctionMessageDequeue = {
                     FROM ${ref(params.schema)}."message"
                     WHERE NOT "is_locked"
                     AND "channel_name" = v_message_dequeue."channel_name"
-                    ORDER BY "dequeue_after" ASC
+                    ORDER BY "dequeue_after" ASC, "id" ASC
                     LIMIT 1
                     INTO v_message_next_dequeue;
 

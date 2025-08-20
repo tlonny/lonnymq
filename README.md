@@ -25,10 +25,13 @@ import { Pool } from "pg"
 const databaseClient = new Pool({ connectionString: process.env.DATABASE_URL })
 databaseClient satisfies DatabaseClient
 
-const queue = new Queue({ schema: "lonny" })
+const queue = new Queue("lonny")
+
+// Helper function for sleeping
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 for(let ix = 0; ix < 500; ix += 1) {
-    queue
+    await queue
         .channel("myChannel")
         .message
         .create({ 
@@ -40,7 +43,7 @@ for(let ix = 0; ix < 500; ix += 1) {
 while(true) {
     const dequeueResult = await queue.dequeue({ databaseClient })
     if(dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
-        await sleep(Math.min(1_000, dequeueResult.retryMs))
+        await sleep(Math.min(1_000, dequeueResult.retryMs || 1_000))
         continue
     }
 
@@ -60,8 +63,8 @@ npm install lonnymq
 Once the package is installed, we need to install the requisite DB machinery. LonnyMQ is agnostic to DB client/migration process and thus simply provides users an ordered list of "Migrations" - each containing a unique name and some SQL fragments to be executed.
 
 ```typescript
-const queue = new Queue({ schema: "lonny" })
-const migrations = queue.migrations()
+const queue = new Queue("lonny")
+const migrations = queue.migrations({ useWake: false })
 ```
 
 N.B. Migration SQL is not idempotent and thus these migrations should be executed in the context of a transaction that can be rolled back.
@@ -70,7 +73,11 @@ N.B. Migration SQL is not idempotent and thus these migrations should be execute
 
 Channels are the mechanism by which LonnyMQ provides multi-tenancy support. They can be considered lightweight sub-queues that are read from in a round-robin fashion. There is no performance penalty associated with using large numbers of channels and thus can be assigned on a highly granular (i.e. per-user) basis to ensure work is scheduled fairly.
 
-Channels can be configured with concurrency and capacity limits by setting their "channel policy".
+Channels can be configured with concurrency and capacity limits by setting their "channel policy". Available policy options include:
+
+- `maxConcurrency`: Maximum number of messages that can be processed concurrently from this channel
+- `maxSize`: Maximum number of messages that can be queued in this channel
+- `releaseIntervalMs`: Minimum interval (in milliseconds) between message releases from this channel
 
 ```typescript
 await queue
@@ -79,6 +86,7 @@ await queue
     .set({ 
         maxConcurrency: 1, 
         maxSize: null, 
+        releaseIntervalMs: 1000,
         databaseClient 
     })
 
@@ -109,7 +117,7 @@ A `name` argument can be provided for de-duplication purposes: if a message that
 
 A message can be fetched for processing by calling `dequeue` on the `Queue` - locking the message. Once processing has completed, messages can then be "finalized" via **deletion** or **deferral** (for further processing in the future).
 
-When deferring a message, we can optionally specify `deferMs` and `state` arguments. `deferMs` tells the queue how long to wait before allowing the message to be re-processed, and `state` allows us to "save our working" and implement durable and/or repeating/scheduled tasks.
+When deferring a message, we can optionally specify `delayMs` and `state` arguments. `delayMs` tells the queue how long to wait before allowing the message to be re-processed, and `state` allows us to "save our working" and implement durable and/or repeating/scheduled tasks.
 
 ### Graceful shutdowns and message sweeping
 
@@ -126,16 +134,16 @@ To improve reactivity, we can use the `retryMs` returned when we fail to dequeue
 Unfortunately, this doesn't help us in situations where a message is created/deferred while a worker is sleeping. However, if we deploy LonnyMQ, with the `useWake` parameter enabled, message creations and deferrals will trigger a payload to the `queue.wakeChannel()` Postgres channel with the amount of milliseconds until said message becomes available for processing encoded as a string payload.
 
 ```typescript
-const queue = new Queue({ schema: "lonny" })
+const queue = new Queue("lonny")
 const migrations = queue.migrations({ useWake: true })
 
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
 const client = await pool.connect()
-await client.query(`LISTEN "${dep.wakeChannel()}"`)
+await client.query(`LISTEN "${queue.wakeChannel()}"`)
 client.on("notification", (msg) => {
     if (msg.channel === queue.wakeChannel()) {
-        const deferMs = parseInt(msg.payload as string, 10)
-        console.log(`Should wake in ${deferMs} ms`)
+        const delayMs = parseInt(msg.payload as string, 10)
+        console.log(`Should wake in ${delayMs} ms`)
     }
 })
 ```
@@ -164,10 +172,10 @@ This batch object provides a familiar API for message creation and channel polic
 
 ```typescript
 const results = [
-    batch.channel("foo").message({ content: "hi" }),
+    batch.channel("foo").message.create({ content: "hi" }),
     batch.channel("bar").policy.clear(),
-    batch.channel("bar").message({ content: "hi", name: "foo" }),
-    batch.channel("bar").message({ content: "hi" }),
+    batch.channel("bar").message.create({ content: "hi", name: "foo" }),
+    batch.channel("bar").message.create({ content: "hi" }),
 ]
 ```
 Prior to execution, the batch object will perform a sort to ensure actions are ordered consistently

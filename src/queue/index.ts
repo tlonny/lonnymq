@@ -70,7 +70,7 @@ export class Queue {
 
     migrations(params: {
         useWake?: boolean
-    }) : QueueMigration[] {
+    } = {}) : QueueMigration[] {
         return [
             migrationTableChannelPolicy,
             migrationTableChannelState,

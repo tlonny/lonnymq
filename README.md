@@ -64,7 +64,8 @@ Once the package is installed, we need to install the requisite DB machinery. Lo
 
 ```typescript
 const queue = new Queue("lonny")
-const migrations = queue.migrations({ useWake: false })
+const migrations = queue.migrations() // useWake defaults to false
+// Or specify explicitly: queue.migrations({ useWake: false })
 ```
 
 N.B. Migration SQL is not idempotent and thus these migrations should be executed in the context of a transaction that can be rolled back.

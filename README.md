@@ -123,7 +123,7 @@ When deferring a message, we can optionally specify `delayMs` and `state` argume
 
 If your program ends unexpectedly, messages that are in the middle of being processed may well be "orphaned" in a locked state - causing channel blockages and reducing throughput. To mitigate this problem, it is imperative that we gracefully shutdown by catching unhandled exceptions and signals (i.e. `SIGINT`/`SIGTERM`) - finalizing all outstanding messages prior to exiting.
 
-That said, despite our best efforts, should we run out of memory, suffer a loss of power, or receieve a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before being available again for dequeue. This facilities ensures that no matter the nature of the shutdown, the queue will always un-clog itself.
+That said, despite our best efforts, should we run out of memory, suffer a loss of power, or receive a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before being available again for dequeue. This facility ensures that no matter the nature of the shutdown, the queue will always un-clog itself.
 
 ## Improvements on polling
 
@@ -138,7 +138,7 @@ const queue = new Queue("lonny")
 const migrations = queue.migrations({ useWake: true })
 
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
-const client = await pool.connect()
+const client = await databaseClient.connect()
 await client.query(`LISTEN "${queue.wakeChannel()}"`)
 client.on("notification", (msg) => {
     if (msg.channel === queue.wakeChannel()) {

@@ -14,7 +14,12 @@ export const migrationFunctionMessageDequeue = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_dequeue" ()
-                RETURNS JSONB AS $$
+                RETURNS TABLE (
+                    result_code INTEGER,
+                    content BYTEA,
+                    state BYTEA,
+                    metadata JSON
+                ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
                     v_dequeue_nonce UUID;
@@ -29,14 +34,14 @@ export const migrationFunctionMessageDequeue = {
                     v_dequeue_nonce := GEN_RANDOM_UUID();
 
                     SELECT
-                        "id",
-                        "name",
-                        "state",
-                        "content",
-                        "channel_name",
-                        "lock_ms",
-                        "dequeue_after",
-                        "num_attempts"
+                        "message"."id",
+                        "message"."name",
+                        "message"."state",
+                        "message"."content",
+                        "message"."channel_name",
+                        "message"."lock_ms",
+                        "message"."dequeue_after",
+                        "message"."num_attempts"
                     FROM ${ref(params.schema)}."message"
                     WHERE "is_locked"
                     ORDER BY "dequeue_after" ASC
@@ -54,25 +59,29 @@ export const migrationFunctionMessageDequeue = {
 
                         PERFORM ${ref(params.schema)}."wake"(v_message_locked."lock_ms");
 
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
-                            'id', v_message_locked.id,
-                            'channel_name', v_message_locked.channel_name,
-                            'state', v_message_locked.state,
-                            'name', v_message_locked.name,
-                            'dequeue_nonce', v_dequeue_nonce,
-                            'content', v_message_locked.content,
-                            'num_attempts', v_message_locked.num_attempts
-                        );
+                        RETURN QUERY SELECT 
+                            ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
+                            NULL::BYTEA,
+                            NULL::BYTEA,
+                            JSON_BUILD_OBJECT(
+                                'id', v_message_locked.id,
+                                'channel_name', v_message_locked.channel_name,
+                                'state', v_message_locked.state,
+                                'name', v_message_locked.name,
+                                'dequeue_nonce', v_dequeue_nonce,
+                                'content', v_message_locked.content,
+                                'num_attempts', v_message_locked.num_attempts
+                            );
+                        RETURN;
                     END IF;
 
                     SELECT
-                        "id",
-                        "name",
-                        "release_interval_ms",
-                        "message_next_id",
-                        "message_next_dequeue_after",
-                        "current_concurrency"
+                        "channel_state"."id",
+                        "channel_state"."name",
+                        "channel_state"."release_interval_ms",
+                        "channel_state"."message_next_id",
+                        "channel_state"."message_next_dequeue_after",
+                        "channel_state"."current_concurrency"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "message_next_id" IS NOT NULL
                     AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency")
@@ -88,20 +97,24 @@ export const migrationFunctionMessageDequeue = {
                             v_message_locked."dequeue_after"
                         );
 
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE)},
-                            'retry_ms', CEIL(EXTRACT(MILLISECOND FROM v_retry_after - v_now))
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE)},
+                            NULL::BYTEA,
+                            NULL::BYTEA,
+                            JSON_BUILD_OBJECT(
+                                'retry_ms', CEIL(EXTRACT(MILLISECOND FROM v_retry_after - v_now))
+                            );
+                        RETURN;
                     END IF;
 
                     SELECT
-                        "id",
-                        "name",
-                        "channel_name",
-                        "content",
-                        "num_attempts",
-                        "state",
-                        "lock_ms"
+                        "message"."id",
+                        "message"."name",
+                        "message"."channel_name",
+                        "message"."content",
+                        "message"."num_attempts",
+                        "message"."state",
+                        "message"."lock_ms"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = v_channel_state."message_next_id"
                     INTO v_message_dequeue;
@@ -116,8 +129,8 @@ export const migrationFunctionMessageDequeue = {
                     PERFORM ${ref(params.schema)}."wake"(v_message_dequeue."lock_ms");
 
                     SELECT
-                        "id",
-                        "dequeue_after"
+                        "message"."id",
+                        "message"."dequeue_after"
                     FROM ${ref(params.schema)}."message"
                     WHERE NOT "is_locked"
                     AND "channel_name" = v_message_dequeue."channel_name"
@@ -144,16 +157,18 @@ export const migrationFunctionMessageDequeue = {
                     END IF;
 
 
-                    RETURN JSONB_BUILD_OBJECT(
-                        'result_code', ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
-                        'id', v_message_dequeue.id,
-                        'channel_name', v_message_dequeue.channel_name,
-                        'state', v_message_dequeue.state,
-                        'dequeue_nonce', v_dequeue_nonce,
-                        'name', v_message_dequeue.name,
-                        'content', v_message_dequeue.content,
-                        'num_attempts', v_message_dequeue.num_attempts
-                    );
+                    RETURN QUERY SELECT
+                        ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
+                        v_message_dequeue.content,
+                        v_message_dequeue.state,
+                        JSON_BUILD_OBJECT(
+                            'id', v_message_dequeue.id,
+                            'channel_name', v_message_dequeue.channel_name,
+                            'dequeue_nonce', v_dequeue_nonce,
+                            'name', v_message_dequeue.name,
+                            'num_attempts', v_message_dequeue.num_attempts
+                        );
+                    RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

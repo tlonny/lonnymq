@@ -22,7 +22,7 @@ export class QueueChannelMessage {
         databaseClient: DatabaseClient,
         name?: string,
         lockMs?: number,
-        content: string,
+        content: Buffer,
         delayMs?: number,
     }) : Promise<MessageCreateCommandResult> {
         return new MessageCreateCommand({

@@ -1,6 +1,6 @@
 import { DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql } from "@src/core/sql"
 import { MessageDeferResultCode } from "@src/migration/07-function-message-defer"
 
 type QueryResult =
@@ -30,14 +30,14 @@ export class MessageDeferCommand {
     readonly id: bigint
     readonly dequeueNonce: string
     readonly delayMs: number
-    readonly state: string | null
+    readonly state: Buffer | null
 
     constructor(params: {
         schema: string,
         id: bigint,
         dequeueNonce: string,
         delayMs?: number,
-        state?: string | null
+        state?: Buffer | null
     }) {
         const delayMs = params.delayMs === undefined
             ? DELAY_MS_DEFAULT
@@ -52,13 +52,18 @@ export class MessageDeferCommand {
 
     async execute(databaseClient: DatabaseClient): Promise<MessageDeferCommandResult> {
         const result = await databaseClient.query(sql`
-            SELECT ${ref(this.schema)}."message_defer"(
-                ${value(this.id)},
-                ${value(this.dequeueNonce)},
-                ${value(this.delayMs)},
-                ${value(this.state)}
-            ) AS "result"
-        `.value).then(res => res.rows[0].result as QueryResult)
+            SELECT * FROM ${ref(this.schema)}."message_defer"(
+                $1,
+                $2,
+                $3,
+                $4
+            )
+        `.value, [
+            this.id,
+            this.dequeueNonce,
+            this.delayMs,
+            this.state
+        ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDeferResultCode.MESSAGE_NOT_FOUND) {
             return { resultType: "MESSAGE_NOT_FOUND" }

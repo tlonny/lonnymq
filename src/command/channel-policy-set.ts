@@ -1,5 +1,5 @@
 import type { DatabaseClient } from "@src/core/database"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicySetCommand {
 
@@ -49,11 +49,16 @@ export class ChannelPolicySetCommand {
     async execute(databaseClient: DatabaseClient): Promise<void> {
         await databaseClient.query(sql`
             SELECT 1 FROM ${ref(this.schema)}."channel_policy_set"(
-                ${value(this.channelName)},
-                ${value(this.maxSize)}::INTEGER,
-                ${value(this.maxConcurrency)}::INTEGER,
-                ${value(this.releaseIntervalMs)}::INTEGER
+                $1,
+                $2::INTEGER,
+                $3::INTEGER,
+                $4::INTEGER
             )
-        `.value)
+        `.value, [
+            this.channelName,
+            this.maxSize,
+            this.maxConcurrency,
+            this.releaseIntervalMs
+        ])
     }
 }

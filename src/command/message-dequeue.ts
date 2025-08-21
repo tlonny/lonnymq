@@ -4,18 +4,24 @@ import { MessageDequeueResultCode } from "@src/migration/05-function-message-deq
 
 type QueryResultMessageNotAvailable = {
     result_code: MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE,
-    retry_ms: number | null
+    content: null,
+    state: null,
+    metadata: {
+        retry_ms: number | null
+    },
 }
 
 type QueryResultMessageDequeued = {
     result_code: MessageDequeueResultCode.MESSAGE_DEQUEUED,
-    id: string,
-    channel_name: string,
-    name: string | null,
-    content: string,
-    dequeue_nonce: string,
-    state: string | null,
-    num_attempts: number
+    state: Buffer | null,
+    content: Buffer,
+    metadata: {
+        id: string,
+        channel_name: string,
+        name: string | null,
+        dequeue_nonce: string,
+        num_attempts: number
+    }
 }
 
 type QueryResult =
@@ -28,9 +34,9 @@ export type MessageDequeueCommandResultMessageDequeued = {
         id: bigint,
         channelName: string,
         name: string | null,
-        content: string,
+        content: Buffer,
         dequeueNonce: string,
-        state: string | null,
+        state: Buffer | null,
         numAttempts: number,
     }
 }
@@ -56,25 +62,30 @@ export class MessageDequeueCommand {
 
     async execute(databaseClient: DatabaseClient) : Promise<MessageDequeueCommandResult> {
         const result = await databaseClient.query(sql`
-            SELECT ${ref(this.schema)}."message_dequeue"() AS "result"
-        `.value).then(res => res.rows[0].result as QueryResult)
+            SELECT
+                result_code,
+                metadata,
+                content,
+                state
+            FROM ${ref(this.schema)}."message_dequeue"()
+        `.value, []).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE) {
             return {
                 resultType: "MESSAGE_NOT_AVAILABLE",
-                retryMs: result.retry_ms
+                retryMs: result.metadata.retry_ms
             }
         } else if (result.result_code === MessageDequeueResultCode.MESSAGE_DEQUEUED) {
             return {
                 resultType: "MESSAGE_DEQUEUED",
                 message: {
-                    id: BigInt(result.id),
-                    channelName: result.channel_name,
-                    name: result.name,
+                    id: BigInt(result.metadata.id),
+                    channelName: result.metadata.channel_name,
+                    name: result.metadata.name,
                     content: result.content,
-                    dequeueNonce: result.dequeue_nonce,
+                    dequeueNonce: result.metadata.dequeue_nonce,
                     state: result.state,
-                    numAttempts: result.num_attempts,
+                    numAttempts: result.metadata.num_attempts,
                 }
             }
         } else {

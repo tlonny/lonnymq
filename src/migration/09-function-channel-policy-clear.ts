@@ -18,8 +18,8 @@ export const migrationFunctionChannelPolicyClear = {
                     WHERE "name" = p_name;
 
                     SELECT
-                        "id",
-                        "current_size"
+                        "channel_state"."id",
+                        "channel_state"."current_size"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = p_name
                     FOR UPDATE

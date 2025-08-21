@@ -18,37 +18,39 @@ export const migrationFunctionMessageDefer = {
                     p_id BIGINT,
                     p_dequeue_nonce UUID,
                     p_delay_ms INTEGER,
-                    p_state TEXT
+                    p_state BYTEA
                 )
-                RETURNS JSONB AS $$
+                RETURNS TABLE (
+                    result_code INTEGER
+                ) AS $$
                 DECLARE
                     v_channel_state RECORD;
                     v_dequeue_after TIMESTAMP;
                     v_message RECORD;
                 BEGIN
                     SELECT
-                        "id",
-                        "channel_name",
-                        "dequeue_nonce"
+                        "message"."id",
+                        "message"."channel_name",
+                        "message"."dequeue_nonce"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
                     INTO v_message;
 
                     IF v_message."id" IS NULL THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDeferResultCode.MESSAGE_NOT_FOUND)}
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeferResultCode.MESSAGE_NOT_FOUND)};
+                        RETURN;
                     ELSEIF v_message."dequeue_nonce" != p_dequeue_nonce THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDeferResultCode.MESSAGE_STATE_INVALID)}
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeferResultCode.MESSAGE_STATE_INVALID)};
+                        RETURN;
                     END IF;
 
                     SELECT
-                        "current_concurrency",
-                        "message_next_id",
-                        "message_next_dequeue_after"
+                        "channel_state"."current_concurrency",
+                        "channel_state"."message_next_id",
+                        "channel_state"."message_next_dequeue_after"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
                     FOR UPDATE
@@ -79,9 +81,9 @@ export const migrationFunctionMessageDefer = {
 
                     PERFORM ${ref(params.schema)}."wake"(GREATEST(0, p_delay_ms));
 
-                    RETURN JSONB_BUILD_OBJECT(
-                        'result_code', ${value(MessageDeferResultCode.MESSAGE_DEFERRED)}
-                    );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeferResultCode.MESSAGE_DEFERRED)};
+                        RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

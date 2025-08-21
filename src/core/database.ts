@@ -8,7 +8,7 @@ export type DatabaseClientQueryResult = {
 }
 
 export interface DatabaseClient {
-    query(query : string) : Promise<DatabaseClientQueryResult>
+    query(query : string, params: Array<unknown>): Promise<DatabaseClientQueryResult>
 }
 
 export class DatabaseCommandBatcher {

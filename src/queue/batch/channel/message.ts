@@ -21,7 +21,7 @@ export class QueueBatchChannelMessage {
     create(params : {
         name?: string,
         lockMs?: number,
-        content: string,
+        content: Buffer,
         delayMs?: number,
     }) : Deferred<MessageCreateCommandResult> {
         const command = new MessageCreateCommand({

@@ -1,12 +1,26 @@
 import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql } from "@src/core/sql"
 import { MessageCreateResultCode } from "@src/migration/04-function-message-create"
 
+type QueryResultMessageDropped = {
+    result_code: MessageCreateResultCode.MESSAGE_DROPPED
+}
+
+type QueryResultMessageDeduplicated = {
+    result_code: MessageCreateResultCode.MESSAGE_DEDUPLICATED,
+    metadata: { id: string }
+}
+
+type QueryResultMessageCreated = {
+    result_code: MessageCreateResultCode.MESSAGE_CREATED,
+    metadata: { id: string }
+}
+
 type QueryResult =
-    | { result_code: MessageCreateResultCode.MESSAGE_DROPPED }
-    | { result_code: MessageCreateResultCode.MESSAGE_DEDUPLICATED, id: string }
-    | { result_code: MessageCreateResultCode.MESSAGE_CREATED, id: string }
+    | QueryResultMessageDropped
+    | QueryResultMessageDeduplicated
+    | QueryResultMessageCreated
 
 export type MessageCreateCommandResultMessageCreated = {
     resultType: "MESSAGE_CREATED",
@@ -32,7 +46,7 @@ export class MessageCreateCommand {
     readonly schema: string
     readonly channelName: string
     readonly name: string | null
-    readonly content: string
+    readonly content: Buffer
     readonly lockMs: number
     readonly delayMs: number
     readonly createdAt: Date
@@ -41,7 +55,7 @@ export class MessageCreateCommand {
         schema: string,
         channelName: string,
         name?: string,
-        content: string,
+        content: Buffer,
         lockMs?: number,
         delayMs?: number,
     }) {
@@ -65,21 +79,27 @@ export class MessageCreateCommand {
 
     async execute(databaseClient: DatabaseClient): Promise<MessageCreateCommandResult> {
         const result = await databaseClient.query(sql`
-            SELECT ${ref(this.schema)}."message_create"(
-                ${value(this.channelName)},
-                ${value(this.name)},
-                ${value(this.content)},
-                ${value(this.lockMs)}::INTEGER,
-                ${value(this.delayMs)}::INTEGER
-            ) AS "result"
-        `.value).then(res => res.rows[0].result as QueryResult)
+            SELECT * FROM ${ref(this.schema)}."message_create"(
+                $1, 
+                $2, 
+                $3, 
+                $4::INTEGER, 
+                $5::INTEGER
+            )
+        `.value, [
+            this.channelName,
+            this.name,
+            this.content,
+            this.lockMs,
+            this.delayMs
+        ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageCreateResultCode.MESSAGE_DROPPED) {
             return { resultType: "MESSAGE_DROPPED" }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_DEDUPLICATED) {
-            return { resultType: "MESSAGE_DEDUPLICATED", id: BigInt(result.id) }
+            return { resultType: "MESSAGE_DEDUPLICATED", id: BigInt(result.metadata.id) }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
-            return { resultType: "MESSAGE_CREATED", id: BigInt(result.id) }
+            return { resultType: "MESSAGE_CREATED", id: BigInt(result.metadata.id) }
         } else {
             result satisfies never
             throw new Error("Unexpected result")

@@ -18,42 +18,44 @@ export const migrationFunctionMessageDelete = {
                     p_id BIGINT,
                     p_dequeue_nonce UUID
                 )
-                RETURNS JSONB AS $$
+                RETURNS TABLE (
+                    result_code INTEGER
+                ) AS $$
                 DECLARE
                     v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
                 BEGIN
                     SELECT
-                        "id",
-                        "channel_name",
-                        "dequeue_nonce"
+                        "message"."id",
+                        "message"."channel_name",
+                        "message"."dequeue_nonce"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
                     INTO v_message;
 
                     IF v_message."id" IS NULL THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDeleteResultCode.MESSAGE_NOT_FOUND)}
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeleteResultCode.MESSAGE_NOT_FOUND)};
+                        RETURN;
                     ELSEIF v_message."dequeue_nonce" != p_dequeue_nonce THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageDeleteResultCode.MESSAGE_STATE_INVALID)}
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeleteResultCode.MESSAGE_STATE_INVALID)};
+                        RETURN;
                     END IF;
 
                     SELECT
-                        "id"
+                        "channel_policy"."id"
                     FROM ${ref(params.schema)}."channel_policy"
                     WHERE "name" = v_message."channel_name"
                     FOR SHARE
                     INTO v_channel_policy;
 
                     SELECT
-                        "id",
-                        "current_size",
-                        "current_concurrency"
+                        "channel_state"."id",
+                        "channel_state"."current_size",
+                        "channel_state"."current_concurrency"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
                     FOR UPDATE
@@ -72,9 +74,9 @@ export const migrationFunctionMessageDelete = {
                     DELETE FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id;
 
-                    RETURN JSONB_BUILD_OBJECT(
-                        'result_code', ${value(MessageDeleteResultCode.MESSAGE_DELETED)}
-                    );
+                        RETURN QUERY SELECT
+                            ${value(MessageDeleteResultCode.MESSAGE_DELETED)};
+                        RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

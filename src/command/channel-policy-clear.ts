@@ -1,5 +1,5 @@
 import type { DatabaseClient } from "@src/core/database"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicyClearCommand {
 
@@ -27,8 +27,10 @@ export class ChannelPolicyClearCommand {
     async execute(databaseClient: DatabaseClient): Promise<void> {
         await databaseClient.query(sql`
             SELECT 1 FROM ${ref(this.schema)}."channel_policy_clear"(
-                ${value(this.channelName)}
+                $1
             )
-        `.value)
+        `.value, [
+            this.channelName
+        ])
     }
 }

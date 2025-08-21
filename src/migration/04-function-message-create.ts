@@ -17,10 +17,13 @@ export const migrationFunctionMessageCreate = {
                 CREATE FUNCTION ${ref(params.schema)}."message_create" (
                     p_channel_name TEXT,
                     p_name TEXT,
-                    p_content TEXT,
+                    p_content BYTEA,
                     p_lock_ms INTEGER,
                     p_delay_ms INTEGER
-                ) RETURNS JSONB AS $$
+                ) RETURNS TABLE (
+                    result_code INTEGER,
+                    metadata JSON
+                ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
                     v_channel_policy RECORD;
@@ -31,9 +34,9 @@ export const migrationFunctionMessageCreate = {
                     v_now := NOW();
 
                     SELECT
-                        "max_size",
-                        "max_concurrency",
-                        "release_interval_ms"
+                        "channel_policy"."max_size",
+                        "channel_policy"."max_concurrency",
+                        "channel_policy"."release_interval_ms"
                     FROM ${ref(params.schema)}."channel_policy"
                     WHERE "name" = p_channel_name
                     FOR SHARE
@@ -70,9 +73,10 @@ export const migrationFunctionMessageCreate = {
                     INTO v_channel_state;
 
                     IF v_channel_state."current_size" >= v_channel_policy."max_size" THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageCreateResultCode.MESSAGE_DROPPED)}
-                        );
+                        RETURN QUERY SELECT
+                            ${value(MessageCreateResultCode.MESSAGE_DROPPED)},
+                            JSON_BUILD_OBJECT();
+                        RETURN;
                     END IF;
 
                     INSERT INTO ${ref(params.schema)}."message" (
@@ -99,10 +103,10 @@ export const migrationFunctionMessageCreate = {
                     INTO v_message;
 
                     IF v_message."xmax" != 0 THEN
-                        RETURN JSONB_BUILD_OBJECT(
-                            'result_code', ${value(MessageCreateResultCode.MESSAGE_DEDUPLICATED)},
-                            'id', v_message."id"
-                        );
+                        RETURN QUERY SELECT 
+                            ${value(MessageCreateResultCode.MESSAGE_DEDUPLICATED)},
+                            JSON_BUILD_OBJECT('id', v_message."id");
+                        RETURN;
                     END IF;
 
                     IF 
@@ -122,10 +126,10 @@ export const migrationFunctionMessageCreate = {
 
                     PERFORM ${ref(params.schema)}."wake"(GREATEST(0, p_delay_ms));
 
-                    RETURN JSONB_BUILD_OBJECT(
-                        'result_code', ${value(MessageCreateResultCode.MESSAGE_CREATED)},
-                        'id', v_message."id"
-                    );
+                    RETURN QUERY SELECT
+                        ${value(MessageCreateResultCode.MESSAGE_CREATED)},
+                        JSON_BUILD_OBJECT('id', v_message."id");
+                    RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

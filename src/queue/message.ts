@@ -10,9 +10,9 @@ export class QueueMessage {
     readonly id : bigint
     readonly channelName: string
     readonly name: string | null
-    readonly content: string
+    readonly content: Buffer
     readonly dequeueNonce: string
-    readonly state: string | null
+    readonly state: Buffer | null
     readonly numAttempts: number
 
     constructor(params: {
@@ -21,8 +21,8 @@ export class QueueMessage {
         dequeueNonce: string,
         channelName: string,
         name: string | null,
-        content: string,
-        state: string | null,
+        content: Buffer,
+        state: Buffer | null,
         numAttempts: number,
     }) {
         this.schema = params.schema
@@ -38,7 +38,7 @@ export class QueueMessage {
     async defer(params: {
         databaseClient: DatabaseClient,
         delayMs?: number,
-        state?: string
+        state?: Buffer
     }) : Promise<MessageDeferCommandResult> {
         return new MessageDeferCommand({
             schema: this.schema,

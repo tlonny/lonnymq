@@ -1,5 +1,5 @@
 import type { DatabaseClient } from "@src/core/database"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql } from "@src/core/sql"
 import { MessageDeleteResultCode } from "@src/migration/06-function-message-delete"
 
 type QueryResult =
@@ -42,10 +42,14 @@ export class MessageDeleteCommand {
 
     async execute(databaseClient: DatabaseClient): Promise<MessageDeleteCommandResult> {
         const result = await databaseClient.query(sql`
-            SELECT ${ref(this.schema)}."message_delete"( ${value(this.id)},
-                ${value(this.dequeueNonce)}
-            ) AS "result"
-        `.value).then(res => res.rows[0].result as QueryResult)
+            SELECT * FROM ${ref(this.schema)}."message_delete"(
+                $1,
+                $2
+            )
+        `.value, [
+            this.id,
+            this.dequeueNonce
+        ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDeleteResultCode.MESSAGE_NOT_FOUND) {
             return { resultType: "MESSAGE_NOT_FOUND" }

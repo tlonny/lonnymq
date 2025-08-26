@@ -1,4 +1,3 @@
-export type { Deferred } from "@src/core/deferred"
 export type { DatabaseClient } from "@src/core/database"
 
 export { ChannelPolicyClearCommand } from "@src/command/channel-policy-clear"

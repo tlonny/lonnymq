@@ -7,18 +7,16 @@ export class QueueMessage {
 
     private readonly schema: string
 
-    readonly id : bigint
+    readonly id : string
     readonly channelName: string
     readonly name: string | null
     readonly content: Buffer
-    readonly dequeueNonce: string
     readonly state: Buffer | null
     readonly numAttempts: number
 
     constructor(params: {
         schema: string,
-        id: bigint,
-        dequeueNonce: string,
+        id: string,
         channelName: string,
         name: string | null,
         content: Buffer,
@@ -28,7 +26,6 @@ export class QueueMessage {
         this.schema = params.schema
         this.id = params.id
         this.channelName = params.channelName
-        this.dequeueNonce = params.dequeueNonce
         this.name = params.name
         this.content = params.content
         this.state = params.state
@@ -43,7 +40,6 @@ export class QueueMessage {
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
-            dequeueNonce: this.dequeueNonce,
             delayMs: params.delayMs,
             state: params.state,
         }).execute(params.databaseClient)
@@ -55,7 +51,6 @@ export class QueueMessage {
         return new MessageDeleteCommand({
             schema: this.schema,
             id: this.id,
-            dequeueNonce: this.dequeueNonce
         }).execute(params.databaseClient)
     }
 

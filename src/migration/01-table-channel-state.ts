@@ -9,14 +9,14 @@ export const migrationTableChannelState = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_state" (
-                    "id" BIGSERIAL NOT NULL,
+                    "id" UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
                     "name" TEXT NOT NULL,
                     "max_size" INTEGER,
                     "max_concurrency" INTEGER,
                     "release_interval_ms" INTEGER,
                     "current_size" INTEGER NOT NULL,
                     "current_concurrency" INTEGER NOT NULL,
-                    "message_next_id" BIGINT,
+                    "message_next_id" UUID,
                     "message_next_dequeue_after" TIMESTAMP,
                     PRIMARY KEY ("id")
                 );

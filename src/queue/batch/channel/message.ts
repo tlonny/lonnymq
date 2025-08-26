@@ -1,6 +1,10 @@
 import { MessageCreateCommand, type MessageCreateCommandResult } from "@src/command/message-create"
-import { Deferred } from "@src/core/deferred"
 import type { BatchedCommandRegisterFn } from "@src/queue/batch"
+
+export type QueueBatchChannelMessageCreateResult = {
+    messageId: string,
+    promise: Promise<MessageCreateCommandResult>
+}
 
 export class QueueBatchChannelMessage {
 
@@ -23,7 +27,7 @@ export class QueueBatchChannelMessage {
         lockMs?: number,
         content: Buffer,
         delayMs?: number,
-    }) : Deferred<MessageCreateCommandResult> {
+    }) : QueueBatchChannelMessageCreateResult {
         const command = new MessageCreateCommand({
             schema: this.schema,
             channelName: this.channelName,
@@ -33,18 +37,22 @@ export class QueueBatchChannelMessage {
             delayMs: params.delayMs,
         })
 
-        const deferred = new Deferred<MessageCreateCommandResult>()
-        this.registerFn({
-            sortKey: JSON.stringify([
-                command.channelName,
-                command.name,
-                command.createdAt.toISOString(),
-            ]),
-            execute: (databaseClient) => command
-                .execute(databaseClient)
-                .then((x) => deferred.set(x))
+        const promise = new Promise<MessageCreateCommandResult>((resolve) => {
+            this.registerFn({
+                sortKey: JSON.stringify([
+                    command.channelName,
+                    command.name,
+                    command.createdAt.toISOString(),
+                ]),
+                execute: (databaseClient) => command
+                    .execute(databaseClient)
+                    .then((x) => resolve(x))
+            })
         })
 
-        return deferred
+        return {
+            messageId: command.id,
+            promise: promise,
+        }
     }
 }

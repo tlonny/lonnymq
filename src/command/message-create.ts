@@ -2,19 +2,18 @@ import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
 import { MessageCreateResultCode } from "@src/migration/04-function-message-create"
+import { randomUUID } from "node:crypto"
 
 type QueryResultMessageDropped = {
     result_code: MessageCreateResultCode.MESSAGE_DROPPED
 }
 
 type QueryResultMessageDeduplicated = {
-    result_code: MessageCreateResultCode.MESSAGE_DEDUPLICATED,
-    metadata: { id: string }
+    result_code: MessageCreateResultCode.MESSAGE_DEDUPLICATED
 }
 
 type QueryResultMessageCreated = {
-    result_code: MessageCreateResultCode.MESSAGE_CREATED,
-    metadata: { id: string }
+    result_code: MessageCreateResultCode.MESSAGE_CREATED
 }
 
 type QueryResult =
@@ -23,13 +22,11 @@ type QueryResult =
     | QueryResultMessageCreated
 
 export type MessageCreateCommandResultMessageCreated = {
-    resultType: "MESSAGE_CREATED",
-    id: bigint
+    resultType: "MESSAGE_CREATED"
 }
 
 export type MessageCreateCommandResultMessageDeduplicated = {
-    resultType: "MESSAGE_DEDUPLICATED",
-    id: bigint
+    resultType: "MESSAGE_DEDUPLICATED"
 }
 
 export type MessageCreateCommandResultMessageDropped = {
@@ -48,6 +45,7 @@ export class MessageCreateCommand {
     readonly name: string | null
     readonly content: Buffer
     readonly lockMs: number
+    readonly id: string
     readonly delayMs: number
     readonly createdAt: Date
 
@@ -68,6 +66,7 @@ export class MessageCreateCommand {
             ? DELAY_MS_DEFAULT
             : params.delayMs
 
+        this.id = randomUUID()
         this.schema = params.schema
         this.channelName = params.channelName
         this.content = params.content
@@ -83,10 +82,12 @@ export class MessageCreateCommand {
                 $1, 
                 $2, 
                 $3, 
-                $4::INTEGER, 
-                $5::INTEGER
+                $4,
+                $5::INTEGER, 
+                $6::INTEGER
             )
         `.value, [
+            this.id,
             this.channelName,
             this.name,
             this.content,
@@ -97,9 +98,9 @@ export class MessageCreateCommand {
         if (result.result_code === MessageCreateResultCode.MESSAGE_DROPPED) {
             return { resultType: "MESSAGE_DROPPED" }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_DEDUPLICATED) {
-            return { resultType: "MESSAGE_DEDUPLICATED", id: BigInt(result.metadata.id) }
+            return { resultType: "MESSAGE_DEDUPLICATED" }
         } else if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
-            return { resultType: "MESSAGE_CREATED", id: BigInt(result.metadata.id) }
+            return { resultType: "MESSAGE_CREATED" }
         } else {
             result satisfies never
             throw new Error("Unexpected result")

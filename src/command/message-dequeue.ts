@@ -19,7 +19,6 @@ type QueryResultMessageDequeued = {
         id: string,
         channel_name: string,
         name: string | null,
-        dequeue_nonce: string,
         num_attempts: number
     }
 }
@@ -31,11 +30,10 @@ type QueryResult =
 export type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
     message: {
-        id: bigint,
+        id: string,
         channelName: string,
         name: string | null,
         content: Buffer,
-        dequeueNonce: string,
         state: Buffer | null,
         numAttempts: number,
     }
@@ -79,11 +77,10 @@ export class MessageDequeueCommand {
             return {
                 resultType: "MESSAGE_DEQUEUED",
                 message: {
-                    id: BigInt(result.metadata.id),
+                    id: result.metadata.id,
                     channelName: result.metadata.channel_name,
                     name: result.metadata.name,
                     content: result.content,
-                    dequeueNonce: result.metadata.dequeue_nonce,
                     state: result.state,
                     numAttempts: result.metadata.num_attempts,
                 }

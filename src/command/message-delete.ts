@@ -27,28 +27,23 @@ export type MessageDeleteCommandResult =
 export class MessageDeleteCommand {
 
     readonly schema: string
-    readonly id: bigint
-    readonly dequeueNonce: string
+    readonly id: string
 
     constructor(params: {
         schema: string,
-        id: bigint,
-        dequeueNonce: string,
+        id: string,
     }) {
         this.schema = params.schema
         this.id = params.id
-        this.dequeueNonce = params.dequeueNonce
     }
 
     async execute(databaseClient: DatabaseClient): Promise<MessageDeleteCommandResult> {
         const result = await databaseClient.query(sql`
             SELECT * FROM ${ref(this.schema)}."message_delete"(
-                $1,
-                $2
+                $1
             )
         `.value, [
-            this.id,
-            this.dequeueNonce
+            this.id
         ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDeleteResultCode.MESSAGE_NOT_FOUND) {

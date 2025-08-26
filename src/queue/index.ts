@@ -44,7 +44,6 @@ export class Queue {
                 message: new QueueMessage({
                     schema: this.schema,
                     id: result.message.id,
-                    dequeueNonce: result.message.dequeueNonce,
                     channelName: result.message.channelName,
                     name: result.message.name,
                     content: result.message.content,

@@ -9,9 +9,8 @@ export const migrationTableMessage = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."message" (
-                    "id" BIGSERIAL NOT NULL,
+                    "id" UUID NOT NULL,
                     "channel_name" TEXT NOT NULL,
-                    "dequeue_nonce" UUID,
                     "name" TEXT,
                     "content" BYTEA NOT NULL,
                     "state" BYTEA,

@@ -9,7 +9,7 @@ export const migrationTableChannelPolicy = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_policy" (
-                    "id" BIGSERIAL NOT NULL,
+                    "id" UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
                     "name" TEXT NOT NULL,
                     "max_size" INTEGER,
                     "max_concurrency" INTEGER,

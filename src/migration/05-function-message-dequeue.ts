@@ -58,14 +58,12 @@ export const migrationFunctionMessageDequeue = {
 
                         RETURN QUERY SELECT 
                             ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
-                            NULL::BYTEA,
-                            NULL::BYTEA,
+                            v_message_locked.content,
+                            v_message_locked.state,
                             JSON_BUILD_OBJECT(
                                 'id', v_message_locked.id,
                                 'channel_name', v_message_locked.channel_name,
-                                'state', v_message_locked.state,
-                                'name', v_message_locked.name
-                                'content', v_message_locked.content,
+                                'name', v_message_locked.name,
                                 'num_attempts', v_message_locked.num_attempts
                             );
                         RETURN;

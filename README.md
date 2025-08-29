@@ -1,20 +1,20 @@
 # LonnyMQ
 
-A high performance, multi-tenant Postgres message queue implementation for NodeJS/Typescript.
+A high-performance, multi-tenant Postgres message queue implementation for Node.js/TypeScript.
 
 ## Features
 
-  - High throughput.
-  - Multi-tenant concurrency and capacity constraints.
-  - Durable message processing.
-  - Flexible message processing retries/deferrals.
-  - Message de-duplication.
-  - Queue actions as part of *existing* database transactions.
-  - Database client agnostic.
-  - Instant reactivity via `LISTEN/NOTIFY`.
-  - Zero dependencies.
+- High throughput
+- Multi-tenant concurrency and capacity constraints
+- Durable message processing
+- Flexible message processing retries/deferrals
+- Message de-duplication
+- Queue actions as part of *existing* database transactions
+- Database client agnostic
+- Instant reactivity via `LISTEN/NOTIFY`
+- Zero dependencies
 
-N.B. unlike other queue implementations, LonnyMQ provides direct access to queue methods vs. providing batteries-included Worker/Processor daemons. 
+N.B. Unlike other queue implementations, LonnyMQ provides direct access to queue methods rather than providing batteries-included Worker/Processor daemons.
 
 ## Quick Look
 
@@ -27,59 +27,84 @@ databaseClient satisfies DatabaseClient
 
 const queue = new Queue({ schema: "lonny" })
 
-for(let ix = 0; ix < 500; ix += 1) {
-    queue
+// Run migrations first
+for (const migration of queue.migrations()) {
+    for (const sql of migration.sql) {
+        await databaseClient.query(sql, [])
+    }
+}
+
+// Create messages
+for (let ix = 0; ix < 500; ix += 1) {
+    await queue
         .channel("myChannel")
         .message
         .create({ 
-            content: "Hello", 
+            content: Buffer.from("Hello"),
             databaseClient,
         })
 }
 
-while(true) {
+// Process messages
+while (true) {
     const dequeueResult = await queue.dequeue({ databaseClient })
-    if(dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
-        await sleep(Math.min(1_000, dequeueResult.retryMs))
+    if (dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
+        const sleepMs = Math.min(1000, dequeueResult.retryMs ?? 5000)
+        await new Promise(resolve => setTimeout(resolve, sleepMs))
         continue
     }
 
-    console.log(dequeueResult.message.content)
+    console.log(dequeueResult.message.content.toString())
     await dequeueResult.message.delete({ databaseClient })
 }
 ```
 
 ## Setup & Installation
 
-LonnyMQ can be installed from npm via:
+LonnyMQ can be installed from npm:
 
 ```bash
 npm install lonnymq
 ```
 
-Once the package is installed, we need to install the requisite DB machinery. LonnyMQ is agnostic to DB client/migration process and thus simply provides users an ordered list of "Migrations" - each containing a unique name and some SQL fragments to be executed.
+Once the package is installed, you need to install the requisite database machinery. LonnyMQ is agnostic to database client and migration process, providing users with an ordered list of "Migrations" - each containing a unique name and SQL fragments to be executed.
 
 ```typescript
 const queue = new Queue({ schema: "lonny" })
 const migrations = queue.migrations()
+
+// Execute migrations (in a transaction for safety)
+await databaseClient.query("BEGIN")
+try {
+    for (const migration of migrations) {
+        for (const sql of migration.sql) {
+            await databaseClient.query(sql, [])
+        }
+    }
+    await databaseClient.query("COMMIT")
+} catch (error) {
+    await databaseClient.query("ROLLBACK")
+    throw error
+}
 ```
 
-N.B. Migration SQL is not idempotent and thus these migrations should be executed in the context of a transaction that can be rolled back.
+**Note:** Migration SQL is not idempotent and should be executed within a transaction that can be rolled back if needed.
 
 ## Channels
 
-Channels are the mechanism by which LonnyMQ provides multi-tenancy support. They can be considered lightweight sub-queues that are read from in a round-robin fashion. There is no performance penalty associated with using large numbers of channels and thus can be assigned on a highly granular (i.e. per-user) basis to ensure work is scheduled fairly.
+Channels provide LonnyMQ's multi-tenancy support. They can be considered lightweight sub-queues that are read from in a round-robin fashion. There is no performance penalty associated with using large numbers of channels, so they can be assigned on a highly granular basis (e.g., per-user) to ensure work is scheduled fairly.
 
-Channels can be configured with concurrency and capacity limits by setting their "channel policy".
+Channels can be configured with concurrency, capacity, and rate limits by setting their "channel policy":
 
 ```typescript
 await queue
     .channel("my-channel")
     .policy
     .set({ 
-        maxConcurrency: 1, 
-        maxSize: null, 
-        databaseClient 
+        databaseClient,
+        maxConcurrency: 1,
+        maxSize: 100,
+        releaseIntervalMs: 1000
     })
 
 // Remove all constraints:
@@ -91,7 +116,7 @@ await queue
 
 ## Message creation
 
-We can add a message to the queue (and assign it to a particular channel) with the `create` function:
+You can add a message to the queue (and assign it to a particular channel) using the `create` function:
 
 ```typescript
 await queue
@@ -99,82 +124,132 @@ await queue
     .message
     .create({
         databaseClient,
-        content: "Hello, world"
+        content: Buffer.from("Hello, world"),
+        name: "optional-dedup-key",
+        lockMs: 30000,  // 30 seconds
+        delayMs: 5000   // 5 second delay
     })
 ```
 
-A `name` argument can be provided for de-duplication purposes: if a message that has _never_ been dequeued exists with the same name, and within the same channel, no new message will be created.
+The `name` argument can be provided for de-duplication purposes: if a message that has *never* been dequeued exists with the same name within the same channel, no new message will be created.
 
-## Message processing
+## Message Processing
 
-A message can be fetched for processing by calling `dequeue` on the `Queue` - locking the message. Once processing has completed, messages can then be "finalized" via **deletion** or **deferral** (for further processing in the future).
+Messages can be fetched for processing by calling `dequeue` on the `Queue` - this locks the message. Once processing has completed, messages must be "finalized" via **deletion** or **deferral** (for further processing in the future).
 
-When deferring a message, we can optionally specify `deferMs` and `state` arguments. `deferMs` tells the queue how long to wait before allowing the message to be re-processed, and `state` allows us to "save our working" and implement durable and/or repeating/scheduled tasks.
+```typescript
+const dequeueResult = await queue.dequeue({ databaseClient })
 
-### Graceful shutdowns and message sweeping
+if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
+    const { message } = dequeueResult
+    console.log(`Processing message: ${message.id}`)
+    console.log(`Content: ${message.content.toString()}`)
+    console.log(`Attempts: ${message.numAttempts}`)
+    
+    try {
+        // Process the message...
+        await processMessage(message.content)
+        
+        // Delete on success
+        await message.delete({ databaseClient })
+    } catch (error) {
+        // Defer for retry with updated state
+        await message.defer({ 
+            databaseClient,
+            delays: 30000, // Retry in 30 seconds
+            state: Buffer.from(JSON.stringify({ error: error.message }))
+        })
+    }
+}
+```
 
-If your program ends unexpectedly, messages that are in the middle of being processed may well be "orphaned" in a locked state - causing channel blockages and reducing throughput. To mitigate this problem, it is imperative that we gracefully shutdown by catching unhandled exceptions and signals (i.e. `SIGINT`/`SIGTERM`) - finalizing all outstanding messages prior to exiting.
+When deferring a message, you can optionally specify `delayMs` and `state` arguments. The `delayMs` parameter tells the queue how long to wait before allowing the message to be re-processed, and `state` allows you to "save your work" and implement durable and/or repeating/scheduled tasks.
 
-That said, despite our best efforts, should we run out of memory, suffer a loss of power, or receieve a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before being available again for dequeue. This facilities ensures that no matter the nature of the shutdown, the queue will always un-clog itself.
+### Graceful Shutdowns and Message Sweeping
 
-## Improvements on polling
+If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput. To mitigate this problem, it's imperative that you gracefully shutdown by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalizing all outstanding messages prior to exiting.
 
-The simplest approach for processing messages is to call `dequeue` in a loop, and backing off with a sleep when no messages are available. The downside with this approach is that we lose reactivity as we increase the polling timeout interval.
+That said, despite our best efforts, if we run out of memory, suffer a loss of power, or receive a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before being available again for dequeue. This facility ensures that no matter the nature of the shutdown, the queue will always recover automatically.
 
-To improve reactivity, we can use the `retryMs` returned when we fail to dequeue a message. This will either be `null` or tell us how long until the next message is available for processing (a message might be deferred for a period time). Thus, we can tune our sleep to use the minimum of our `retryMs` and a default poll timeout.
+## Improvements on Polling
 
-Unfortunately, this doesn't help us in situations where a message is created/deferred while a worker is sleeping. However, if we deploy LonnyMQ, with the `useWake` parameter enabled, message creations and deferrals will trigger a payload to the `queue.wakeChannel()` Postgres channel with the amount of milliseconds until said message becomes available for processing encoded as a string payload.
+The simplest approach for processing messages is to call `dequeue` in a loop, backing off with a sleep when no messages are available. The downside with this approach is that we lose reactivity as we increase the polling timeout interval.
+
+To improve reactivity, you can use the `retryMs` returned when failing to dequeue a message. This will either be `null` or tell you how long until the next message is available for processing (a message might be deferred for a period of time). Thus, you can tune your sleep to use the minimum of your `retryMs` and a default poll timeout.
+
+Unfortunately, this doesn't help in situations where a message is created/deferred while a worker is sleeping. However, if you deploy LonnyMQ with the `useWake` parameter enabled, message creations and deferrals will trigger a payload to the `queue.wakeChannel()` Postgres channel with the number of milliseconds until said message becomes available for processing encoded as a string payload.
 
 ```typescript
 const queue = new Queue({ schema: "lonny" })
 const migrations = queue.migrations({ useWake: true })
 
+// Run migrations with wake enabled...
+
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
-const client = await pool.connect()
-await client.query(`LISTEN "${dep.wakeChannel()}"`)
+const client = await databaseClient.connect()
+await client.query(`LISTEN "${queue.wakeChannel()}"`)
 client.on("notification", (msg) => {
     if (msg.channel === queue.wakeChannel()) {
         const deferMs = parseInt(msg.payload as string, 10)
         console.log(`Should wake in ${deferMs} ms`)
+        // Wake up your worker loop here
     }
 })
 ```
 
 ## Deadlocks
 
-If all queue actions are isolated to their own transaction, there is 0 risk of deadlocks occurring. That being said, it is _possible_ to safely bulk perform the following actions within a single transaction if we ensure they are performed in a consistent lexicographical ordering with respect to channel name and message name (if provided):
+If all queue actions are isolated to their own transaction, there is zero risk of deadlocks occurring. That being said, it is *possible* to safely bulk-perform the following actions within a single transaction if we ensure they are performed in a consistent lexicographical ordering with respect to channel name and message name (if provided):
 
-  - Message create
-  - Channel policy set
-  - Channel policy clear
+- Message create
+- Channel policy set  
+- Channel policy clear
 
 Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform any of the remaining actions within a single transaction. Each of these actions should be isolated within their **own** transaction:
 
- - Message dequeue
- - Message defer
- - Message delete
+- Message dequeue
+- Message defer
+- Message delete
 
-To help with ensuring commands are ordered consistently, we can create a "Batch" object by calling:
+## Batching Operations
+
+When you need to perform multiple safe operations (message creation and channel policy changes) within a single transaction, LonnyMQ provides a batching mechanism that automatically handles proper ordering to prevent deadlocks.
+
+The batch interface mirrors the main queue interface - you call `queue.batch()` to create a batch, then use the same `.channel(name).message.create()` and `.channel(name).policy.set/clear()` methods you're already familiar with. The key difference is that batch operations are queued up and don't execute immediately.
+
+The batch system ensures that all operations are executed in a consistent lexicographical order based on channel name and message name, eliminating the possibility of deadlocks when multiple workers are performing bulk operations simultaneously.
 
 ```typescript
 const batch = queue.batch()
-```
 
-This batch object provides a familiar API for message creation and channel policy mutations, but doesn't execute the underlying commands until the underlying batch is explicitly "executed". 
+batch.channel("user-123").message.create({ 
+    content: Buffer.from("Welcome email") 
+})
 
-```typescript
-const results = [
-    batch.channel("foo").message({ content: "hi" }),
-    batch.channel("bar").policy.clear(),
-    batch.channel("bar").message({ content: "hi", name: "foo" }),
-    batch.channel("bar").message({ content: "hi" }),
-]
-```
-Prior to execution, the batch object will perform a sort to ensure actions are ordered consistently
+batch.channel("user-123").policy.set({
+    maxConcurrency: 5,
+    maxSize: 1000,
+    releaseIntervalMs: 100
+})
 
-```typescript
+batch.channel("notifications").message.create({ 
+    content: Buffer.from("Daily digest"),
+    name: "daily-digest-2025-08-29"
+})
+
+batch.channel("analytics").policy.clear()
+
 await batch.execute({ databaseClient })
+```
 
-// Get the 3rd command that was submitted to the batch
-console.log(await results[2].get())
+## Database Clients
+
+LonnyMQ is designed to be database client agnostic, requiring only a minimal interface that most PostgreSQL clients already implement. Your database client must provide a single `query` method with this signature:
+
+```typescript
+interface DatabaseClient {
+    query(sql: string, params: Array<unknown>): Promise<{
+        rows: Array<Record<string, unknown>>
+    }>
+}
 ```

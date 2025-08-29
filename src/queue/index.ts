@@ -28,8 +28,8 @@ export type MessageDequeueResult =
 export class Queue {
     private readonly schema: string
 
-    constructor(schema: string) {
-        this.schema = schema
+    constructor(params : { schema: string }) {
+        this.schema = params.schema
     }
 
     async dequeue(params: {

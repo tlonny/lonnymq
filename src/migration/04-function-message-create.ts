@@ -69,7 +69,8 @@ export const migrationFunctionMessageCreate = {
                         "max_size",
                         "max_concurrency",
                         "message_next_id",
-                        "message_next_dequeue_after"
+                        "message_next_dequeue_after",
+                        "message_next_seq_no"
                     INTO v_channel_state;
 
                     IF v_channel_state."current_size" >= v_channel_policy."max_size" THEN
@@ -99,6 +100,7 @@ export const migrationFunctionMessageCreate = {
                         "name" = EXCLUDED."name"
                     RETURNING
                         "id", 
+                        "seq_no",
                         "dequeue_after"
                     INTO v_message;
 
@@ -110,12 +112,14 @@ export const migrationFunctionMessageCreate = {
 
                     IF 
                         v_channel_state."message_next_id" IS NULL OR
-                        v_channel_state."message_next_dequeue_after" > v_message."dequeue_after"
+                        v_channel_state."message_next_dequeue_after" > v_message."dequeue_after" OR
+                        (v_channel_state."message_next_dequeue_after" = v_message."dequeue_after" AND v_channel_state."message_next_seq_no" > v_message."seq_no")
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
                             "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = GREATEST(v_now, v_message."dequeue_after")
+                            "message_next_dequeue_after" = GREATEST(v_now, v_message."dequeue_after"),
+                            "message_next_seq_no" = v_message."seq_no"
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET

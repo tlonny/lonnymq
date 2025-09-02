@@ -123,11 +123,12 @@ export const migrationFunctionMessageDequeue = {
 
                     SELECT
                         "message"."id",
-                        "message"."dequeue_after"
+                        "message"."dequeue_after",
+                        "message"."seq_no"
                     FROM ${ref(params.schema)}."message"
                     WHERE NOT "is_locked"
                     AND "channel_name" = v_message_dequeue."channel_name"
-                    ORDER BY "dequeue_after" ASC, "id" ASC
+                    ORDER BY "dequeue_after" ASC, "seq_no" ASC
                     LIMIT 1
                     INTO v_message_next_dequeue;
 
@@ -140,7 +141,8 @@ export const migrationFunctionMessageDequeue = {
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" + 1,
                             "message_next_id" = v_message_next_dequeue."id",
-                            "message_next_dequeue_after" = v_message_next_dequeue_after
+                            "message_next_dequeue_after" = v_message_next_dequeue_after,
+                            "message_next_seq_no" = v_message_next_dequeue."seq_no"
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET

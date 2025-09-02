@@ -30,7 +30,8 @@ export const migrationFunctionMessageDefer = {
                     SELECT
                         "message"."id",
                         "message"."channel_name",
-                        "message"."is_locked"
+                        "message"."is_locked",
+                        "message"."seq_no"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
@@ -49,7 +50,8 @@ export const migrationFunctionMessageDefer = {
                     SELECT
                         "channel_state"."current_concurrency",
                         "channel_state"."message_next_id",
-                        "channel_state"."message_next_dequeue_after"
+                        "channel_state"."message_next_dequeue_after",
+                        "channel_state"."message_next_seq_no"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
                     FOR UPDATE
@@ -59,12 +61,14 @@ export const migrationFunctionMessageDefer = {
 
                     IF 
                         v_channel_state."message_next_id" IS NULL OR 
-                        v_channel_state."message_next_dequeue_after" > v_dequeue_after
+                        v_channel_state."message_next_dequeue_after" > v_dequeue_after OR
+                        (v_channel_state."message_next_dequeue_after" = v_dequeue_after AND v_channel_state."message_next_seq_no" > v_message."seq_no")
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" - 1,
                             "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = v_dequeue_after
+                            "message_next_dequeue_after" = v_dequeue_after,
+                            "message_next_seq_no" = v_message."seq_no"
                         WHERE "name" = v_message."channel_name";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET

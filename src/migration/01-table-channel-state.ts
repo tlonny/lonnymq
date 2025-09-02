@@ -18,6 +18,7 @@ export const migrationTableChannelState = {
                     "current_concurrency" INTEGER NOT NULL,
                     "message_next_id" UUID,
                     "message_next_dequeue_after" TIMESTAMP,
+                    "message_next_seq_no" BIGINT,
                     PRIMARY KEY ("id")
                 );
             `,

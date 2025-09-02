@@ -11,6 +11,7 @@ export const migrationTableMessage = {
                 CREATE TABLE ${ref(params.schema)}."message" (
                     "id" UUID NOT NULL,
                     "channel_name" TEXT NOT NULL,
+                    "seq_no" BIGSERIAL NOT NULL,
                     "name" TEXT,
                     "content" BYTEA NOT NULL,
                     "state" BYTEA,
@@ -35,7 +36,7 @@ export const migrationTableMessage = {
                 ON ${ref(params.schema)}."message" (
                     "channel_name",
                     "dequeue_after" ASC,
-                    "id" ASC
+                    "seq_no" ASC
                 ) WHERE NOT "is_locked";
             `,
 

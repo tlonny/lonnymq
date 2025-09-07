@@ -35,8 +35,6 @@ export const migrationFunctionChannelPolicyClear = {
                             "release_interval_ms" = NULL
                         WHERE "name" = p_name;
                     END IF;
-
-                    PERFORM ${ref(params.schema)}."wake"(0);
                 END;
                 $$ LANGUAGE plpgsql;
             `

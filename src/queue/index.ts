@@ -1,17 +1,15 @@
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
-import { USE_WAKE_DEFAULT, WAKE_CHANNEL } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { dedent } from "@src/core/dedent"
 import { migrationTableChannelPolicy } from "@src/migration/00-table-channel-policy"
 import { migrationTableChannelState } from "@src/migration/01-table-channel-state"
 import { migrationTableMessage } from "@src/migration/02-table-message"
-import { migrationFunctionWake } from "@src/migration/03-function-wake"
-import { migrationFunctionMessageCreate } from "@src/migration/04-function-message-create"
-import { migrationFunctionMessageDequeue } from "@src/migration/05-function-message-dequeue"
-import { migrationFunctionMessageDelete } from "@src/migration/06-function-message-delete"
-import { migrationFunctionMessageDefer } from "@src/migration/07-function-message-defer"
-import { migrationFunctionChannelPolicySet } from "@src/migration/08-function-channel-policy-set"
-import { migrationFunctionChannelPolicyClear } from "@src/migration/09-function-channel-policy-clear"
+import { migrationFunctionMessageCreate } from "@src/migration/03-function-message-create"
+import { migrationFunctionMessageDequeue } from "@src/migration/04-function-message-dequeue"
+import { migrationFunctionMessageDelete } from "@src/migration/05-function-message-delete"
+import { migrationFunctionMessageDefer } from "@src/migration/06-function-message-defer"
+import { migrationFunctionChannelPolicySet } from "@src/migration/07-function-channel-policy-set"
+import { migrationFunctionChannelPolicyClear } from "@src/migration/08-function-channel-policy-clear"
 import { QueueBatch } from "@src/queue/batch"
 import { QueueChannel } from "@src/queue/channel"
 import { QueueMessage } from "@src/queue/message"
@@ -68,13 +66,12 @@ export class Queue {
     }
 
     migrations(params: {
-        useWake?: boolean
+        eventChannel?: string,
     }) : QueueMigration[] {
         return [
             migrationTableChannelPolicy,
             migrationTableChannelState,
             migrationTableMessage,
-            migrationFunctionWake,
             migrationFunctionMessageCreate,
             migrationFunctionMessageDequeue,
             migrationFunctionMessageDelete,
@@ -85,12 +82,8 @@ export class Queue {
             name: migration.name,
             sql: migration.sql({
                 schema: this.schema,
-                useWake: params.useWake ?? USE_WAKE_DEFAULT
+                eventChannel: params.eventChannel ?? null,
             }).map(x => dedent(x.value))
         })).sort((a, b) => a.name.localeCompare(b.name))
-    }
-
-    wakeChannel() {
-        return WAKE_CHANNEL.toString(this.schema)
     }
 }

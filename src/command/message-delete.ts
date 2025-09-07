@@ -1,6 +1,6 @@
+import { MessageDeleteResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
-import { MessageDeleteResultCode } from "@src/migration/06-function-message-delete"
 
 type QueryResult =
     | { result_code: MessageDeleteResultCode.MESSAGE_NOT_FOUND}

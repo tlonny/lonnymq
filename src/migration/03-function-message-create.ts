@@ -1,16 +1,12 @@
+import { MessageCreateResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
-
-export enum MessageCreateResultCode {
-    MESSAGE_CREATED,
-    MESSAGE_DROPPED,
-    MESSAGE_DEDUPLICATED
-}
 
 export const migrationFunctionMessageCreate = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,
+        eventChannel: string | null,
     }) => {
         return [
             sql`
@@ -26,10 +22,10 @@ export const migrationFunctionMessageCreate = {
                 ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
+                    v_dequeue_after TIMESTAMP;
                     v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
-                    v_message_next_dequeue_after TIMESTAMP;
                 BEGIN
                     v_now := NOW();
 
@@ -68,6 +64,8 @@ export const migrationFunctionMessageCreate = {
                         "current_concurrency",
                         "max_size",
                         "max_concurrency",
+                        "release_interval_ms",
+                        "message_last_dequeued_at",
                         "message_next_id",
                         "message_next_dequeue_after",
                         "message_next_seq_no"
@@ -110,15 +108,22 @@ export const migrationFunctionMessageCreate = {
                         RETURN;
                     END IF;
 
+                    v_dequeue_after := GREATEST(
+                        v_now,
+                        v_channel_state."message_last_dequeued_at"
+                            + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                        v_message."dequeue_after"
+                    );
+
                     IF 
                         v_channel_state."message_next_id" IS NULL OR
-                        v_channel_state."message_next_dequeue_after" > v_message."dequeue_after" OR
-                        (v_channel_state."message_next_dequeue_after" = v_message."dequeue_after" AND v_channel_state."message_next_seq_no" > v_message."seq_no")
+                        v_channel_state."message_next_dequeue_after" > v_dequeue_after OR
+                        (v_channel_state."message_next_dequeue_after" = v_dequeue_after AND v_channel_state."message_next_seq_no" > v_message."seq_no")
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
                             "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = GREATEST(v_now, v_message."dequeue_after"),
+                            "message_next_dequeue_after" = v_dequeue_after,
                             "message_next_seq_no" = v_message."seq_no"
                         WHERE "id" = v_channel_state."id";
                     ELSE
@@ -127,7 +132,16 @@ export const migrationFunctionMessageCreate = {
                         WHERE "id" = v_channel_state."id";
                     END IF;
 
-                    PERFORM ${ref(params.schema)}."wake"(GREATEST(0, p_delay_ms));
+                    IF ${value(params.eventChannel !== null)} THEN
+                        PERFORM PG_NOTIFY(
+                            ${value(params.eventChannel)},
+                            JSON_BUILD_OBJECT(
+                                'type', ${value(MessageEventType.MESSAGE_CREATED)},
+                                'id', p_id,
+                                'delay_ms', p_delay_ms
+                            )::TEXT
+                        );
+                    END IF;
 
                     RETURN QUERY SELECT
                         ${value(MessageCreateResultCode.MESSAGE_CREATED)};

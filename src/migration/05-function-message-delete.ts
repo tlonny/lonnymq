@@ -1,16 +1,12 @@
+import { MessageDeleteResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
-
-export enum MessageDeleteResultCode {
-    MESSAGE_NOT_FOUND,
-    MESSAGE_STATE_INVALID,
-    MESSAGE_DELETED
-}
 
 export const migrationFunctionMessageDelete = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,
+        eventChannel: string | null,
     }) => {
         return [
             sql`
@@ -70,12 +66,22 @@ export const migrationFunctionMessageDelete = {
                         WHERE "id" = v_channel_state."id";
                     END IF;
 
+                    IF ${value(params.eventChannel !== null)} THEN
+                        PERFORM PG_NOTIFY(
+                            ${value(params.eventChannel)},
+                            JSON_BUILD_OBJECT(
+                                'type', ${value(MessageEventType.MESSAGE_DELETED)},
+                                'id', p_id
+                            )::TEXT
+                        );
+                    END IF;
+
                     DELETE FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id;
 
-                        RETURN QUERY SELECT
-                            ${value(MessageDeleteResultCode.MESSAGE_DELETED)};
-                        RETURN;
+                    RETURN QUERY SELECT
+                        ${value(MessageDeleteResultCode.MESSAGE_DELETED)};
+                    RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

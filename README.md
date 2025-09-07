@@ -11,7 +11,7 @@ A high-performance, multi-tenant Postgres message queue implementation for Node.
 - Message de-duplication
 - Queue actions as part of *existing* database transactions
 - Database client agnostic
-- Instant reactivity via `LISTEN/NOTIFY`
+- Granular events via `PGNOTIFY`
 - Zero dependencies
 
 N.B. Unlike other queue implementations, LonnyMQ provides direct access to queue methods rather than providing batteries-included Worker/Processor daemons.
@@ -156,7 +156,7 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
         // Defer for retry with updated state
         await message.defer({ 
             databaseClient,
-            delays: 30000, // Retry in 30 seconds
+            delayMs: 30000, // Retry in 30 seconds
             state: Buffer.from(JSON.stringify({ error: error.message }))
         })
     }
@@ -171,13 +171,24 @@ If your program ends unexpectedly, messages that are currently being processed m
 
 That said, despite our best efforts, if we run out of memory, suffer a loss of power, or receive a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before being available again for dequeue. This facility ensures that no matter the nature of the shutdown, the queue will always recover automatically.
 
-## Improvements on Polling
+## Events
+
+Using `PGNOTIFY`, we can receive a granular stream of queue events:
+
+  1. `MESSAGE_CREATED`
+  2. `MESSAGE_DEFERRED`
+  3. `MESSAGE_DEQUEUED`
+  4. `MESSAGE_DELETED`
+
+To enable this feature, ensure the optional `eventChannel` is defined when constructing the SQL migrations.
+
+### Improvements on Polling
 
 The simplest approach for processing messages is to call `dequeue` in a loop, backing off with a sleep when no messages are available. The downside with this approach is that we lose reactivity as we increase the polling timeout interval.
 
 To improve reactivity, you can use the `retryMs` returned when failing to dequeue a message. This will either be `null` or tell you how long until the next message is available for processing (a message might be deferred for a period of time). Thus, you can tune your sleep to use the minimum of your `retryMs` and a default poll timeout.
 
-Unfortunately, this doesn't help in situations where a message is created/deferred while a worker is sleeping. However, if you deploy LonnyMQ with the `useWake` parameter enabled, message creations and deferrals will trigger a payload to the `queue.wakeChannel()` Postgres channel with the number of milliseconds until said message becomes available for processing encoded as a string payload.
+Unfortunately, this doesn't help in situations where a message is created/deferred while a worker is sleeping. However, by tracking the `delayMs` provided by the `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events, we can determine the minimum amount of time to sleep until a message becomes be available.
 
 ```typescript
 const queue = new Queue({ schema: "lonny" })
@@ -187,12 +198,15 @@ const migrations = queue.migrations({ useWake: true })
 
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
 const client = await databaseClient.connect()
-await client.query(`LISTEN "${queue.wakeChannel()}"`)
+await client.query(`LISTEN "EVENTS"`)
 client.on("notification", (msg) => {
-    if (msg.channel === queue.wakeChannel()) {
-        const deferMs = parseInt(msg.payload as string, 10)
-        console.log(`Should wake in ${deferMs} ms`)
-        // Wake up your worker loop here
+    if (msg.channel === "EVENTS") {}
+        const event = queueEventDequeue(msg.payload as string)
+        if(event.eventType === "MESSAGE_CREATED") {
+            console.log(`Should wake in ${event.delayMs} ms`)
+        } else if(event.eventType === "MESSAGE_DEFERRED") {
+            console.log(`Should wake in ${event.delayMs} ms`)
+        }
     }
 })
 ```

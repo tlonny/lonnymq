@@ -1,7 +1,6 @@
-import { DELAY_MS_DEFAULT } from "@src/core/constant"
+import { DELAY_MS_DEFAULT, MessageDeferResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
-import { MessageDeferResultCode } from "@src/migration/07-function-message-defer"
 
 type QueryResult =
     | { result_code: MessageDeferResultCode.MESSAGE_NOT_FOUND}

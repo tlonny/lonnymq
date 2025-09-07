@@ -35,8 +35,6 @@ export const migrationFunctionChannelPolicySet = {
                         "max_concurrency" = p_max_concurrency,
                         "release_interval_ms" = p_release_interval_ms
                     WHERE "name" = p_name;
-
-                    PERFORM ${ref(params.schema)}."wake"(0);
                 END;
                 $$ LANGUAGE plpgsql;
             `

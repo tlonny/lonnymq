@@ -2,6 +2,16 @@ export type { DatabaseClient } from "@src/core/database"
 
 export { ChannelPolicyClearCommand } from "@src/command/channel-policy-clear"
 export { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
+
+export {
+    queueEventDecode,
+    type QueueEvent,
+    type QueueEventMessageCreate,
+    type QueueEventMessageDeleted,
+    type QueueEventMessageDeferred,
+    type QueueEventMessageDequeued,
+} from "@src/queue/event"
+
 export {
     MessageCreateCommand,
     type MessageCreateCommandResultMessageCreated,

@@ -1,16 +1,12 @@
+import { MessageDeferResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
-
-export enum MessageDeferResultCode {
-    MESSAGE_NOT_FOUND,
-    MESSAGE_STATE_INVALID,
-    MESSAGE_DEFERRED
-}
 
 export const migrationFunctionMessageDefer = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,
+        eventChannel: string | null,
     }) => {
         return [
             sql`
@@ -23,10 +19,13 @@ export const migrationFunctionMessageDefer = {
                     result_code INTEGER
                 ) AS $$
                 DECLARE
+                    v_now TIMESTAMP;
                     v_channel_state RECORD;
                     v_dequeue_after TIMESTAMP;
                     v_message RECORD;
                 BEGIN
+                    v_now := NOW();
+
                     SELECT
                         "message"."id",
                         "message"."channel_name",
@@ -49,8 +48,10 @@ export const migrationFunctionMessageDefer = {
 
                     SELECT
                         "channel_state"."current_concurrency",
+                        "channel_state"."release_interval_ms",
                         "channel_state"."message_next_id",
                         "channel_state"."message_next_dequeue_after",
+                        "channel_state"."message_last_dequeued_at",
                         "channel_state"."message_next_seq_no"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
@@ -58,6 +59,12 @@ export const migrationFunctionMessageDefer = {
                     INTO v_channel_state;
 
                     v_dequeue_after := NOW() + INTERVAL '1 MILLISECOND' * p_delay_ms;
+
+                    v_dequeue_after := GREATEST(
+                        v_now,
+                        v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
+                        v_channel_state."message_last_dequeued_at"
+                    );
 
                     IF 
                         v_channel_state."message_next_id" IS NULL OR 
@@ -82,11 +89,20 @@ export const migrationFunctionMessageDefer = {
                         "dequeue_after" = v_dequeue_after
                     WHERE "id" = p_id;
 
-                    PERFORM ${ref(params.schema)}."wake"(GREATEST(0, p_delay_ms));
+                    IF ${value(params.eventChannel !== null)} THEN
+                        PERFORM PG_NOTIFY(
+                            ${value(params.eventChannel)},
+                            JSON_BUILD_OBJECT(
+                                'type', ${value(MessageEventType.MESSAGE_DEFERRED)},
+                                'delay_ms', p_delay_ms,
+                                'id', p_id
+                            )::TEXT
+                        );
+                    END IF;
 
-                        RETURN QUERY SELECT
-                            ${value(MessageDeferResultCode.MESSAGE_DEFERRED)};
-                        RETURN;
+                    RETURN QUERY SELECT
+                        ${value(MessageDeferResultCode.MESSAGE_DEFERRED)};
+                    RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

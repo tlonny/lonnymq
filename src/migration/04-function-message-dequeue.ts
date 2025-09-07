@@ -1,15 +1,12 @@
+import { MessageDequeueResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
-
-export enum MessageDequeueResultCode {
-    MESSAGE_NOT_AVAILABLE,
-    MESSAGE_DEQUEUED
-}
 
 export const migrationFunctionMessageDequeue = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,
+        eventChannel: string | null,
     }) => {
         return [
             sql`
@@ -54,7 +51,16 @@ export const migrationFunctionMessageDequeue = {
                             "dequeue_after" = v_now + (v_message_locked."lock_ms" * INTERVAL '1 millisecond')
                         WHERE "id" = v_message_locked."id";
 
-                        PERFORM ${ref(params.schema)}."wake"(v_message_locked."lock_ms");
+                        IF ${value(params.eventChannel !== null)} THEN
+                            PERFORM PG_NOTIFY(
+                                ${value(params.eventChannel)},
+                                JSON_BUILD_OBJECT(
+                                    'type', ${value(MessageEventType.MESSAGE_DEQUEUED)},
+                                    'lock_ms', v_message_locked."lock_ms",
+                                    'id', v_message_locked."id"
+                                )::TEXT
+                            );
+                        END IF;
 
                         RETURN QUERY SELECT 
                             ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
@@ -119,7 +125,16 @@ export const migrationFunctionMessageDequeue = {
                         "dequeue_after" = v_now + (v_message_dequeue."lock_ms" * INTERVAL '1 millisecond')
                     WHERE "id" = v_message_dequeue."id";
 
-                    PERFORM ${ref(params.schema)}."wake"(v_message_dequeue."lock_ms");
+                    IF ${value(params.eventChannel !== null)} THEN
+                        PERFORM PG_NOTIFY(
+                            ${value(params.eventChannel)},
+                            JSON_BUILD_OBJECT(
+                                'type', ${value(MessageEventType.MESSAGE_DEQUEUED)},
+                                'lock_ms', v_message_dequeue."lock_ms",
+                                'id', v_message_dequeue."id"
+                            )::TEXT
+                        );
+                    END IF;
 
                     SELECT
                         "message"."id",
@@ -142,11 +157,13 @@ export const migrationFunctionMessageDequeue = {
                             "current_concurrency" = v_channel_state."current_concurrency" + 1,
                             "message_next_id" = v_message_next_dequeue."id",
                             "message_next_dequeue_after" = v_message_next_dequeue_after,
-                            "message_next_seq_no" = v_message_next_dequeue."seq_no"
+                            "message_next_seq_no" = v_message_next_dequeue."seq_no",
+                            "message_last_dequeued_at" = v_now
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" + 1,
+                            "message_last_dequeued_at" = v_now,
                             "message_next_id" = NULL
                         WHERE "id" = v_channel_state."id";
                     END IF;

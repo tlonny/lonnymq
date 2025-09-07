@@ -1,6 +1,6 @@
+import { MessageDequeueResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
-import { MessageDequeueResultCode } from "@src/migration/05-function-message-dequeue"
 
 type QueryResultMessageNotAvailable = {
     result_code: MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE,

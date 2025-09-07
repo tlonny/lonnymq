@@ -1,23 +1,34 @@
 import { fromHours, fromSecs } from "@src/core/ms"
-import { createHash } from "node:crypto"
 
-export class DatabaseConstant {
-    private readonly value: string
-
-    constructor(value : string) {
-        this.value = value
-    }
-
-    toString(schema: string): string {
-        return createHash("sha256")
-            .update(schema)
-            .update(this.value)
-            .digest("base64")
-            .replace(/=/g, "")
-    }
+export enum MessageCreateResultCode {
+    MESSAGE_CREATED,
+    MESSAGE_DROPPED,
+    MESSAGE_DEDUPLICATED
 }
 
-export const WAKE_CHANNEL = new DatabaseConstant("WAKE")
-export const USE_WAKE_DEFAULT = false
+export enum MessageDequeueResultCode {
+    MESSAGE_NOT_AVAILABLE,
+    MESSAGE_DEQUEUED
+}
+
+export enum MessageDeleteResultCode {
+    MESSAGE_NOT_FOUND,
+    MESSAGE_STATE_INVALID,
+    MESSAGE_DELETED
+}
+
+export enum MessageDeferResultCode {
+    MESSAGE_NOT_FOUND,
+    MESSAGE_STATE_INVALID,
+    MESSAGE_DEFERRED
+}
+
+export enum MessageEventType {
+    MESSAGE_CREATED,
+    MESSAGE_DEQUEUED,
+    MESSAGE_DELETED,
+    MESSAGE_DEFERRED,
+}
+
 export const DELAY_MS_DEFAULT = fromSecs(0)
 export const LOCK_MS_DEFAULT = fromHours(1)

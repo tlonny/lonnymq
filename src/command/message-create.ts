@@ -1,7 +1,6 @@
-import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT } from "@src/core/constant"
+import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT, MessageCreateResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
-import { MessageCreateResultCode } from "@src/migration/04-function-message-create"
 import { randomUUID } from "node:crypto"
 
 type QueryResultMessageDropped = {

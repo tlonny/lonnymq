@@ -46,7 +46,6 @@ export {
 export {
     Queue,
     type MessageDequeueResult,
-    type QueueMigration
 } from "@src/queue"
 
 export type { QueueMessage } from "@src/queue/message"

@@ -14,11 +14,6 @@ import { QueueBatch } from "@src/queue/batch"
 import { QueueChannel } from "@src/queue/channel"
 import { QueueMessage } from "@src/queue/message"
 
-export type QueueMigration = {
-    name: string
-    sql: string[]
-}
-
 export type MessageDequeueResult =
     | { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: number | null }
     | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage }
@@ -67,7 +62,7 @@ export class Queue {
 
     migrations(params: {
         eventChannel?: string,
-    }) : QueueMigration[] {
+    }) : string[] {
         return [
             migrationTableChannelPolicy,
             migrationTableChannelState,
@@ -78,12 +73,11 @@ export class Queue {
             migrationFunctionMessageDefer,
             migrationFunctionChannelPolicySet,
             migrationFunctionChannelPolicyClear,
-        ].map(migration => ({
-            name: migration.name,
-            sql: migration.sql({
+        ]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .flatMap(migration => migration.sql({
                 schema: this.schema,
                 eventChannel: params.eventChannel ?? null,
-            }).map(x => dedent(x.value))
-        })).sort((a, b) => a.name.localeCompare(b.name))
+            })).map(sql => dedent(sql.value))
     }
 }

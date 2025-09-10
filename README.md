@@ -29,9 +29,7 @@ const queue = new Queue({ schema: "lonny" })
 
 // Run migrations first
 for (const migration of queue.migrations()) {
-    for (const sql of migration.sql) {
-        await databaseClient.query(sql, [])
-    }
+    await databaseClient.query(migration, [])
 }
 
 // Create messages
@@ -77,9 +75,7 @@ const migrations = queue.migrations()
 await databaseClient.query("BEGIN")
 try {
     for (const migration of migrations) {
-        for (const sql of migration.sql) {
-            await databaseClient.query(sql, [])
-        }
+        await databaseClient.query(migration, [])
     }
     await databaseClient.query("COMMIT")
 } catch (error) {

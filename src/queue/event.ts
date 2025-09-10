@@ -11,23 +11,16 @@ type QueueEventPayloadMessageDelete = {
     id: string,
 }
 
-type QueueEventPayloadMessageDequeue = {
-    type: MessageEventType.MESSAGE_DEQUEUED,
-    id: string,
-    lock_ms: number
-}
-
 type QueueEventPayloadMessageDefer = {
     type: MessageEventType.MESSAGE_DEFERRED,
     id: string,
     delay_ms: number
 }
 
-type QueueEventPayload = 
+type QueueEventPayload =
     | QueueEventPayloadMessageCreate
     | QueueEventPayloadMessageDelete
     | QueueEventPayloadMessageDefer
-    | QueueEventPayloadMessageDequeue
 
 export type QueueEventMessageCreate = {
     eventType: "MESSAGE_CREATED",
@@ -52,39 +45,32 @@ export type QueueEventMessageDeferred = {
     delayMs: number
 }
 
-export type QueueEvent = 
+export type QueueEvent =
     | QueueEventMessageCreate
     | QueueEventMessageDeleted
-    | QueueEventMessageDequeued
     | QueueEventMessageDeferred
 
 export const queueEventDecode = (payload : string) : QueueEvent => {
     const parsed = JSON.parse(payload) as QueueEventPayload
-    if(parsed.type === MessageEventType.MESSAGE_CREATED) {
+    if (parsed.type === MessageEventType.MESSAGE_CREATED) {
         return {
             eventType: "MESSAGE_CREATED",
             id: parsed.id,
             delayMs: parsed.delay_ms,
         }
-    } else if(parsed.type === MessageEventType.MESSAGE_DELETED) {
+    } else if (parsed.type === MessageEventType.MESSAGE_DELETED) {
         return {
             eventType: "MESSAGE_DELETED",
             id: parsed.id,
         }
-    } else if(parsed.type === MessageEventType.MESSAGE_DEFERRED) {
+    } else if (parsed.type === MessageEventType.MESSAGE_DEFERRED) {
         return {
             eventType: "MESSAGE_DEFERRED",
             id: parsed.id,
             delayMs: parsed.delay_ms,
         }
-    } else if(parsed.type === MessageEventType.MESSAGE_DEQUEUED) {
-        return {
-            eventType: "MESSAGE_DEQUEUED",
-            id: parsed.id,
-            lockMs: parsed.lock_ms,
-        }
     } else {
-        parsed satisfies never 
+        parsed satisfies never
         throw new Error("Unknown event type")
     }
 }

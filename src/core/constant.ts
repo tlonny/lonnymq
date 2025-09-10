@@ -25,7 +25,6 @@ export enum MessageDeferResultCode {
 
 export enum MessageEventType {
     MESSAGE_CREATED,
-    MESSAGE_DEQUEUED,
     MESSAGE_DELETED,
     MESSAGE_DEFERRED,
 }

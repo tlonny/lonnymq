@@ -1,12 +1,11 @@
-import { MessageDequeueResultCode, MessageEventType } from "@src/core/constant"
+import { MessageDequeueResultCode } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
 
 export const migrationFunctionMessageDequeue = {
     name: pathNormalize(__filename),
     sql: (params : {
-        schema: string,
-        eventChannel: string | null,
+        schema: string
     }) => {
         return [
             sql`
@@ -50,17 +49,6 @@ export const migrationFunctionMessageDequeue = {
                             "num_attempts" = v_message_locked."num_attempts" + 1,
                             "dequeue_after" = v_now + (v_message_locked."lock_ms" * INTERVAL '1 millisecond')
                         WHERE "id" = v_message_locked."id";
-
-                        IF ${value(params.eventChannel !== null)} THEN
-                            PERFORM PG_NOTIFY(
-                                ${value(params.eventChannel)},
-                                JSON_BUILD_OBJECT(
-                                    'type', ${value(MessageEventType.MESSAGE_DEQUEUED)},
-                                    'lock_ms', v_message_locked."lock_ms",
-                                    'id', v_message_locked."id"
-                                )::TEXT
-                            );
-                        END IF;
 
                         RETURN QUERY SELECT 
                             ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
@@ -124,17 +112,6 @@ export const migrationFunctionMessageDequeue = {
                         "num_attempts" = v_message_dequeue."num_attempts" + 1,
                         "dequeue_after" = v_now + (v_message_dequeue."lock_ms" * INTERVAL '1 millisecond')
                     WHERE "id" = v_message_dequeue."id";
-
-                    IF ${value(params.eventChannel !== null)} THEN
-                        PERFORM PG_NOTIFY(
-                            ${value(params.eventChannel)},
-                            JSON_BUILD_OBJECT(
-                                'type', ${value(MessageEventType.MESSAGE_DEQUEUED)},
-                                'lock_ms', v_message_dequeue."lock_ms",
-                                'id', v_message_dequeue."id"
-                            )::TEXT
-                        );
-                    END IF;
 
                     SELECT
                         "message"."id",

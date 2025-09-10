@@ -176,6 +176,10 @@ Using PostgreSQL `NOTIFY`, we can receive a granular stream of queue events:
 
 To enable this feature, ensure the optional `eventChannel` is defined when constructing the SQL migrations.
 
+```typescript
+const migrations = queue.migrations({ eventChannel: "EVENTS"})
+```
+
 ### Improving on Polling
 
 The simplest approach for processing messages is to call `dequeue` in a loop, backing off with a sleep when no messages are available. The downside of this approach is that we lose reactivity as we increase the polling timeout interval.
@@ -185,9 +189,6 @@ To improve reactivity, you can use the `retryMs` returned when failing to dequeu
 Unfortunately, this doesn't help in situations where a message is created or deferred while a worker is sleeping. However, by tracking the `delayMs` provided by the `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events, we can determine the minimum amount of time to sleep until a message becomes available.
 
 ```typescript
-const queue = new Queue({ schema: "lonny" })
-const migrations = queue.migrations({ eventChannel: "EVENTS" })
-
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
 const client = await databaseClient.connect()
 await client.query(`LISTEN "EVENTS"`)
@@ -208,7 +209,6 @@ client.on("notification", (msg) => {
 The `MESSAGE_DELETED` event can be used to create coordination patterns where one part of your application waits for an unrelated job to complete. By listening for deletion events on specific channels or message names, you can implement blocking operations that wait for background work to finish.
 
 ```typescript
-// Worker process
 const client = await databaseClient.connect()
 await client.query(`LISTEN "EVENTS"`)
 

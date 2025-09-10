@@ -1,13 +1,13 @@
-import { ChannelPolicySetCommand } from '@src/command/channel-policy-set'
-import { MessageCreateCommand } from '@src/command/message-create'
-import { MessageDequeueCommand } from '@src/command/message-dequeue'
-import { Queue } from '@src/queue'
-import { queueEventDecode } from '@src/queue/event'
-import { beforeEach, expect, test } from 'bun:test'
-import { Pool } from 'pg'
+import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
+import { MessageCreateCommand } from "@src/command/message-create"
+import { MessageDequeueCommand } from "@src/command/message-dequeue"
+import { Queue } from "@src/queue"
+import { queueEventDecode } from "@src/queue/event"
+import { beforeEach, expect, test } from "bun:test"
+import { Pool } from "pg"
 
 const EVENT_CHANNEL = "events"
-const SCHEMA = 'test'
+const SCHEMA = "test"
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const queue = new Queue({ schema: SCHEMA })
 
@@ -15,13 +15,11 @@ beforeEach(async () => {
     await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
     await pool.query(`CREATE SCHEMA "${SCHEMA}"`)
     for (const migration of queue.migrations({ eventChannel: EVENT_CHANNEL })) {
-        for(const query of migration.sql) {
-            await pool.query(query)
-        }
+        await pool.query(migration)
     }
 })
 
-test('MessageCreateCommand persists a message in the DB', async () => {
+test("MessageCreateCommand persists a message in the DB", async () => {
     const command = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
@@ -34,8 +32,8 @@ test('MessageCreateCommand persists a message in the DB', async () => {
     const client = await pool.connect()
     await client.query(`LISTEN "${EVENT_CHANNEL}"`)
     let events: any[] = []
-    client.on('notification', (msg) => {
-        if(msg.channel === EVENT_CHANNEL) {
+    client.on("notification", (msg) => {
+        if (msg.channel === EVENT_CHANNEL) {
             events.push(queueEventDecode(msg.payload as string))
         }
     })
@@ -44,8 +42,8 @@ test('MessageCreateCommand persists a message in the DB', async () => {
         const result = await command.execute(pool)
         expect(result).toMatchObject({ resultType: "MESSAGE_CREATED" })
 
-        const message = await pool.query('SELECT * FROM test.message').then(res => res.rows[0])
-        const channelState = await pool.query('SELECT * FROM test.channel_state').then(res => res.rows[0])
+        const message = await pool.query("SELECT * FROM test.message").then(res => res.rows[0])
+        const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
         expect(message).toMatchObject({
             id: command.id,
@@ -73,7 +71,7 @@ test('MessageCreateCommand persists a message in the DB', async () => {
     }
 })
 
-test('MessageCreateCommand drops messages if size constaints are breached', async () => {
+test("MessageCreateCommand drops messages if size constaints are breached", async () => {
     const firstCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
@@ -99,7 +97,7 @@ test('MessageCreateCommand drops messages if size constaints are breached', asyn
     const secondResult = await secondCommand.execute(pool)
     expect(secondResult).toMatchObject({ resultType: "MESSAGE_DROPPED" })
 
-    const messages = await pool.query('SELECT * FROM test.message').then(res => res.rows)
+    const messages = await pool.query("SELECT * FROM test.message").then(res => res.rows)
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({
         id: firstCommand.id,
@@ -108,7 +106,7 @@ test('MessageCreateCommand drops messages if size constaints are breached', asyn
         channel_name: "alpha",
     })
 
-    const channelState = await pool.query('SELECT * FROM test.channel_state').then(res => res.rows[0])
+    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 1,
@@ -118,7 +116,7 @@ test('MessageCreateCommand drops messages if size constaints are breached', asyn
     })
 })
 
-test('MessageCreateCommand deduplicates messages with the same name if not processed', async () => {
+test("MessageCreateCommand deduplicates messages with the same name if not processed", async () => {
     const firstCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
@@ -140,7 +138,7 @@ test('MessageCreateCommand deduplicates messages with the same name if not proce
     const secondResult = await secondCommand.execute(pool)
     expect(secondResult).toMatchObject({ resultType: "MESSAGE_DEDUPLICATED" })
 
-    const messages = await pool.query('SELECT * FROM test.message').then(res => res.rows)
+    const messages = await pool.query("SELECT * FROM test.message").then(res => res.rows)
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({
         id: firstCommand.id,
@@ -149,7 +147,7 @@ test('MessageCreateCommand deduplicates messages with the same name if not proce
         channel_name: "alpha",
     })
 
-    const channelState = await pool.query('SELECT * FROM test.channel_state').then(res => res.rows[0])
+    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 1,
@@ -186,10 +184,10 @@ test("MessageCreateCommand doesn't deduplicate messages with the same name if on
     const secondResult = await secondCommand.execute(pool)
     expect(secondResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
 
-    const messages = await pool.query('SELECT * FROM test.message ORDER BY seq_no').then(res => res.rows)
+    const messages = await pool.query("SELECT * FROM test.message ORDER BY seq_no").then(res => res.rows)
     expect(messages).toHaveLength(2)
 
-    const channelState = await pool.query('SELECT * FROM test.channel_state').then(res => res.rows[0])
+    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 2

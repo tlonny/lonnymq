@@ -14,6 +14,7 @@ export const migrationTableChannelPolicy = {
                     "max_size" INTEGER,
                     "max_concurrency" INTEGER,
                     "release_interval_ms" INTEGER,
+                    "created_at" TIMESTAMP NOT NULL,
                     PRIMARY KEY ("id")
                 );
             `,

@@ -18,7 +18,9 @@ export const migrationTableMessage = {
                     "lock_ms" INTEGER NOT NULL,
                     "is_locked" BOOLEAN NOT NULL DEFAULT FALSE,
                     "num_attempts" INTEGER NOT NULL DEFAULT 0,
-                    "dequeue_after" TIMESTAMP NOT NULL,
+                    "dequeue_at" TIMESTAMP NOT NULL,
+                    "unlock_at" TIMESTAMP,
+                    "created_at" TIMESTAMP NOT NULL,
                     PRIMARY KEY ("id")
                 );
             `,
@@ -35,7 +37,7 @@ export const migrationTableMessage = {
                 CREATE INDEX "message_dequeue_ix"
                 ON ${ref(params.schema)}."message" (
                     "channel_name",
-                    "dequeue_after" ASC,
+                    "dequeue_at" ASC,
                     "seq_no" ASC
                 ) WHERE NOT "is_locked";
             `,
@@ -43,7 +45,7 @@ export const migrationTableMessage = {
             sql`
                 CREATE INDEX "message_locked_dequeue_ix"
                 ON ${ref(params.schema)}."message" (
-                    "dequeue_after" ASC
+                    "unlock_at" ASC
                 ) WHERE "is_locked";
             `
         ]

@@ -22,7 +22,7 @@ export const migrationFunctionMessageCreate = {
                 ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
-                    v_dequeue_after TIMESTAMP;
+                    v_active_next_at TIMESTAMP;
                     v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
@@ -45,8 +45,8 @@ export const migrationFunctionMessageCreate = {
                         "max_size",
                         "max_concurrency",
                         "release_interval_ms",
-                        "message_next_id",
-                        "message_next_dequeue_after"
+                        "active_prev_at",
+                        "created_at"
                     ) VALUES (
                         p_channel_name,
                         0,
@@ -54,8 +54,8 @@ export const migrationFunctionMessageCreate = {
                         v_channel_policy."max_size",
                         v_channel_policy."max_concurrency",
                         v_channel_policy."release_interval_ms",
-                        NULL,
-                        NULL
+                        v_now,
+                        v_now
                     ) ON CONFLICT ("name") 
                     DO UPDATE SET "id" = EXCLUDED."id"
                     RETURNING
@@ -65,10 +65,10 @@ export const migrationFunctionMessageCreate = {
                         "max_size",
                         "max_concurrency",
                         "release_interval_ms",
-                        "message_last_dequeued_at",
-                        "message_next_id",
-                        "message_next_dequeue_after",
-                        "message_next_seq_no"
+                        "active_prev_at",
+                        "message_id",
+                        "message_dequeue_at",
+                        "message_seq_no"
                     INTO v_channel_state;
 
                     IF v_channel_state."current_size" >= v_channel_policy."max_size" THEN
@@ -83,14 +83,16 @@ export const migrationFunctionMessageCreate = {
                         "name",
                         "content",
                         "lock_ms",
-                        "dequeue_after"
+                        "dequeue_at",
+                        "created_at"
                     ) VALUES (
                         p_id,
                         p_channel_name,
                         p_name,
                         p_content,
                         p_lock_ms,
-                        v_now + INTERVAL '1 MILLISECOND' * p_delay_ms
+                        v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
+                        v_now
                     ) ON CONFLICT ("channel_name", "name") 
                     WHERE "num_attempts" = 0
                     DO UPDATE SET
@@ -99,7 +101,7 @@ export const migrationFunctionMessageCreate = {
                     RETURNING
                         "id", 
                         "seq_no",
-                        "dequeue_after"
+                        "dequeue_at"
                     INTO v_message;
 
                     IF v_message."id" != p_id THEN
@@ -108,23 +110,20 @@ export const migrationFunctionMessageCreate = {
                         RETURN;
                     END IF;
 
-                    v_dequeue_after := GREATEST(
-                        v_now,
-                        v_channel_state."message_last_dequeued_at"
-                            + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
-                        v_message."dequeue_after"
-                    );
-
                     IF 
-                        v_channel_state."message_next_id" IS NULL OR
-                        v_channel_state."message_next_dequeue_after" > v_dequeue_after OR
-                        (v_channel_state."message_next_dequeue_after" = v_dequeue_after AND v_channel_state."message_next_seq_no" > v_message."seq_no")
+                        v_channel_state."message_id" IS NULL OR
+                        v_message."dequeue_at" < v_channel_state."message_dequeue_at" OR
+                        v_message."dequeue_at" = v_channel_state."message_dequeue_at" AND v_message."seq_no" < v_channel_state."message_seq_no"
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
-                            "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = v_dequeue_after,
-                            "message_next_seq_no" = v_message."seq_no"
+                            "message_id" = v_message."id",
+                            "message_dequeue_at" = v_message."dequeue_at",
+                            "message_seq_no" = v_message."seq_no",
+                            "active_next_at" = GREATEST(
+                                v_channel_state."active_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                                v_message."dequeue_at"
+                            )
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET

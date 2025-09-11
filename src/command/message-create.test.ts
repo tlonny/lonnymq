@@ -55,8 +55,8 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         expect(channelState).toMatchObject({
             name: "alpha",
             current_size: 1,
-            message_next_id: command.id,
-            message_next_dequeue_after: message.dequeue_after,
+            message_id: command.id,
+            message_dequeue_at: message.dequeue_at,
         })
 
         expect(events).toHaveLength(1)
@@ -111,8 +111,8 @@ test("MessageCreateCommand drops messages if size constaints are breached", asyn
         name: "alpha",
         current_size: 1,
         max_size: 1,
-        message_next_id: firstCommand.id,
-        message_next_dequeue_after: messages[0].dequeue_after,
+        message_id: firstCommand.id,
+        message_dequeue_at: messages[0].dequeue_at,
     })
 })
 
@@ -151,8 +151,8 @@ test("MessageCreateCommand deduplicates messages with the same name if not proce
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 1,
-        message_next_id: firstCommand.id,
-        message_next_dequeue_after: messages[0].dequeue_after,
+        message_id: firstCommand.id,
+        message_dequeue_at: messages[0].dequeue_at,
     })
 })
 
@@ -191,5 +191,40 @@ test("MessageCreateCommand doesn't deduplicate messages with the same name if on
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 2
+    })
+})
+
+test("MessageCreateCommand correctly updates channelState when preempting a \"lower\" priority message", async () => {
+    const firstCommand = new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        delayMs: 0,
+        content: Buffer.from("hello"),
+    })
+
+    const secondCommand = new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        delayMs: -50,
+        content: Buffer.from("hello"),
+    })
+
+    const firstResult = await firstCommand.execute(pool)
+    expect(firstResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
+
+    const secondResult = await secondCommand.execute(pool)
+    expect(secondResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
+
+    const firstMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [firstCommand.id]).then(res => res.rows[0])
+    const secondMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [secondCommand.id]).then(res => res.rows[0])
+
+    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
+    expect(channelState).toMatchObject({
+        name: "alpha",
+        current_size: 2,
+        active_next_at: firstMessage.dequeue_at,
+        message_dequeue_at: secondMessage.dequeue_at,
+        message_seq_no: secondMessage.seq_no,
+        message_id: secondCommand.id,
     })
 })

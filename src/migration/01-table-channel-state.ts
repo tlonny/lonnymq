@@ -16,10 +16,12 @@ export const migrationTableChannelState = {
                     "release_interval_ms" INTEGER,
                     "current_size" INTEGER NOT NULL,
                     "current_concurrency" INTEGER NOT NULL,
-                    "message_next_id" UUID,
-                    "message_next_seq_no" BIGINT,
-                    "message_next_dequeue_after" TIMESTAMP,
-                    "message_last_dequeued_at" TIMESTAMP,
+                    "message_id" UUID,
+                    "message_seq_no" BIGINT,
+                    "message_dequeue_at" TIMESTAMP,
+                    "active_prev_at" TIMESTAMP NOT NULL,
+                    "active_next_at" TIMESTAMP NULL,
+                    "created_at" TIMESTAMP NOT NULL,
                     PRIMARY KEY ("id")
                 );
             `,
@@ -30,8 +32,8 @@ export const migrationTableChannelState = {
             sql`
                 CREATE INDEX "channel_state_dequeue_ix"
                 ON ${ref(params.schema)}."channel_state" (
-                    "message_next_dequeue_after" ASC
-                ) WHERE "message_next_id" IS NOT NULL
+                    "active_next_at" ASC
+                ) WHERE "message_id" IS NOT NULL
                 AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency");
             `
         ]

@@ -62,7 +62,7 @@ export class Queue {
 
     migrations(params: {
         eventChannel?: string,
-    }) : string[] {
+    } = {}) : string[] {
         return [
             migrationTableChannelPolicy,
             migrationTableChannelState,

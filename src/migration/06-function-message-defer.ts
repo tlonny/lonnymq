@@ -21,8 +21,8 @@ export const migrationFunctionMessageDefer = {
                 DECLARE
                     v_now TIMESTAMP;
                     v_channel_state RECORD;
-                    v_dequeue_after TIMESTAMP;
                     v_message RECORD;
+                    v_dequeue_at TIMESTAMP;
                 BEGIN
                     v_now := NOW();
 
@@ -49,33 +49,37 @@ export const migrationFunctionMessageDefer = {
                     SELECT
                         "channel_state"."current_concurrency",
                         "channel_state"."release_interval_ms",
-                        "channel_state"."message_next_id",
-                        "channel_state"."message_next_dequeue_after",
-                        "channel_state"."message_last_dequeued_at",
-                        "channel_state"."message_next_seq_no"
+                        "channel_state"."message_id",
+                        "channel_state"."message_dequeue_at",
+                        "channel_state"."active_prev_at",
+                        "channel_state"."message_seq_no"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
                     FOR UPDATE
                     INTO v_channel_state;
 
-                    v_dequeue_after := NOW() + INTERVAL '1 MILLISECOND' * p_delay_ms;
+                    v_dequeue_at := v_now + INTERVAL '1 MILLISECOND' * p_delay_ms;
 
-                    v_dequeue_after := GREATEST(
+                    v_dequeue_at := GREATEST(
                         v_now,
                         v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
                         v_channel_state."message_last_dequeued_at"
                     );
 
                     IF 
-                        v_channel_state."message_next_id" IS NULL OR 
-                        v_channel_state."message_next_dequeue_after" > v_dequeue_after OR
-                        (v_channel_state."message_next_dequeue_after" = v_dequeue_after AND v_channel_state."message_next_seq_no" > v_message."seq_no")
+                        v_channel_state."message_id" IS NULL OR 
+                        v_dequeue_at < v_channel_state."message_dequeue_at" OR
+                        v_dequeue_at = v_channel_state."message_dequeue_at" AND v_message."seq_no" < v_channel_state."message_seq_no"
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" - 1,
-                            "message_next_id" = v_message."id",
-                            "message_next_dequeue_after" = v_dequeue_after,
-                            "message_next_seq_no" = v_message."seq_no"
+                            "message_id" = v_message."id",
+                            "message_dequeue_at" = v_dequeue_at,
+                            "message_seq_no" = v_message."seq_no",
+                            "active_next_at" = GREATEST(
+                                v_channel_state."active_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                                v_dequeue_at
+                            )
                         WHERE "name" = v_message."channel_name";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET
@@ -86,7 +90,7 @@ export const migrationFunctionMessageDefer = {
                     UPDATE ${ref(params.schema)}."message" SET
                         "state" = p_state,
                         "is_locked" = FALSE,
-                        "dequeue_after" = v_dequeue_after
+                        "dequeue_at" = v_dequeue_at
                     WHERE "id" = p_id;
 
                     IF ${value(params.eventChannel !== null)} THEN

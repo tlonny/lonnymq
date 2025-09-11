@@ -14,17 +14,23 @@ export const migrationFunctionChannelPolicySet = {
                     p_max_concurrency INTEGER,
                     p_release_interval_ms INTEGER
                 ) RETURNS VOID AS $$
+                DECLARE
+                    v_now TIMESTAMP;
                 BEGIN
+                    v_now := NOW();
+
                     INSERT INTO ${ref(params.schema)}."channel_policy" (
                         "name",
                         "max_size",
                         "max_concurrency",
-                        "release_interval_ms"
+                        "release_interval_ms",
+                        "created_at"
                     ) VALUES (
                         p_name,
                         p_max_size,
                         p_max_concurrency,
-                        p_release_interval_ms
+                        p_release_interval_ms,
+                        v_now
                     ) ON CONFLICT ("name") DO UPDATE SET
                         "max_size" = EXCLUDED."max_size",
                         "max_concurrency" = EXCLUDED."max_concurrency",

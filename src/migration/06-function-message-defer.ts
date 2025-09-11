@@ -60,12 +60,6 @@ export const migrationFunctionMessageDefer = {
 
                     v_dequeue_at := v_now + INTERVAL '1 MILLISECOND' * p_delay_ms;
 
-                    v_dequeue_at := GREATEST(
-                        v_now,
-                        v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
-                        v_channel_state."message_last_dequeued_at"
-                    );
-
                     IF 
                         v_channel_state."message_id" IS NULL OR 
                         v_dequeue_at < v_channel_state."message_dequeue_at" OR

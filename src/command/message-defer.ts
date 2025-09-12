@@ -50,7 +50,7 @@ export class MessageDeferCommand {
         const result = await databaseClient.query(sql`
             SELECT * FROM ${ref(this.schema)}."message_defer"(
                 $1,
-                $2,
+                $2::BIGINT,
                 $3
             )
         `.value, [

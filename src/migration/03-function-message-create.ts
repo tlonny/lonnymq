@@ -15,8 +15,8 @@ export const migrationFunctionMessageCreate = {
                     p_channel_name TEXT,
                     p_name TEXT,
                     p_content BYTEA,
-                    p_lock_ms INTEGER,
-                    p_delay_ms INTEGER
+                    p_lock_ms BIGINT,
+                    p_delay_ms BIGINT
                 ) RETURNS TABLE (
                     result_code INTEGER
                 ) AS $$
@@ -83,6 +83,8 @@ export const migrationFunctionMessageCreate = {
                         "name",
                         "content",
                         "lock_ms",
+                        "is_locked",
+                        "num_attempts",
                         "dequeue_at",
                         "created_at"
                     ) VALUES (
@@ -91,6 +93,8 @@ export const migrationFunctionMessageCreate = {
                         p_name,
                         p_content,
                         p_lock_ms,
+                        FALSE,
+                        0,
                         v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
                         v_now
                     ) ON CONFLICT ("channel_name", "name") 

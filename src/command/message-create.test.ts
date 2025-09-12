@@ -47,7 +47,7 @@ test("MessageCreateCommand persists a message in the DB", async () => {
 
         expect(message).toMatchObject({
             id: command.id,
-            num_attempts: 0,
+            num_attempts: "0",
             content: Buffer.from("hello"),
             channel_name: "alpha",
         })
@@ -101,7 +101,7 @@ test("MessageCreateCommand drops messages if size constaints are breached", asyn
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({
         id: firstCommand.id,
-        num_attempts: 0,
+        num_attempts: "0",
         content: Buffer.from("hello"),
         channel_name: "alpha",
     })
@@ -142,7 +142,7 @@ test("MessageCreateCommand deduplicates messages with the same name if not proce
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({
         id: firstCommand.id,
-        num_attempts: 0,
+        num_attempts: "0",
         content: Buffer.from("hello"),
         channel_name: "alpha",
     })

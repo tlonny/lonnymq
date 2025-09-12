@@ -85,7 +85,7 @@ export class MessageDequeueCommand {
                     name: result.metadata.name,
                     content: result.content,
                     state: result.state,
-                    numAttempts: result.metadata.num_attempts,
+                    numAttempts: result.metadata.num_attempts
                 }
             }
         } else {

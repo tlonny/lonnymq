@@ -82,8 +82,8 @@ export class MessageCreateCommand {
                 $2, 
                 $3, 
                 $4,
-                $5::INTEGER, 
-                $6::INTEGER
+                $5::BIGINT, 
+                $6::BIGINT
             )
         `.value, [
             this.id,

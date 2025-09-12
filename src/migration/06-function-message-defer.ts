@@ -12,7 +12,7 @@ export const migrationFunctionMessageDefer = {
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
                     p_id UUID,
-                    p_delay_ms INTEGER,
+                    p_delay_ms BIGINT,
                     p_state BYTEA
                 )
                 RETURNS TABLE (

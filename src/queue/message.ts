@@ -8,6 +8,7 @@ export class QueueMessage {
     private readonly schema: string
 
     readonly id : string
+    readonly isUnlocked: boolean
     readonly channelName: string
     readonly name: string | null
     readonly content: Buffer
@@ -18,6 +19,7 @@ export class QueueMessage {
         schema: string,
         id: string,
         channelName: string,
+        isUnlocked: boolean,
         name: string | null,
         content: Buffer,
         state: Buffer | null,
@@ -26,6 +28,7 @@ export class QueueMessage {
         this.schema = params.schema
         this.id = params.id
         this.channelName = params.channelName
+        this.isUnlocked = params.isUnlocked
         this.name = params.name
         this.content = params.content
         this.state = params.state

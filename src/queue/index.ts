@@ -39,6 +39,7 @@ export class Queue {
                     id: result.message.id,
                     channelName: result.message.channelName,
                     name: result.message.name,
+                    isUnlocked: result.message.isUnlocked,
                     content: result.message.content,
                     state: result.message.state,
                     numAttempts: result.message.numAttempts,

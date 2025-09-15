@@ -43,6 +43,7 @@ export class QueueMessage {
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
+            numAttempts: this.numAttempts,
             delayMs: params.delayMs,
             state: params.state,
         }).execute(params.databaseClient)
@@ -53,7 +54,20 @@ export class QueueMessage {
     }) : Promise<MessageDeleteCommandResult> {
         return new MessageDeleteCommand({
             schema: this.schema,
+            numAttempts: this.numAttempts,
             id: this.id,
+        }).execute(params.databaseClient)
+    }
+
+    async heartbeat(params: {
+        databaseClient: DatabaseClient,
+        delayMs?: number
+    }) : Promise<MessageDeferCommandResult> {
+        return new MessageDeferCommand({
+            schema: this.schema,
+            id: this.id,
+            numAttempts: this.numAttempts,
+            delayMs: params.delayMs,
         }).execute(params.databaseClient)
     }
 

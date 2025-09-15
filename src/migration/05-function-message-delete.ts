@@ -11,7 +11,8 @@ export const migrationFunctionMessageDelete = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_delete" (
-                    p_id UUID
+                    p_id UUID,
+                    p_num_attempts BIGINT
                 )
                 RETURNS TABLE (
                     result_code INTEGER
@@ -24,6 +25,7 @@ export const migrationFunctionMessageDelete = {
                     SELECT
                         "message"."id",
                         "message"."channel_name",
+                        "message"."num_attempts",
                         "message"."is_locked"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
@@ -34,7 +36,7 @@ export const migrationFunctionMessageDelete = {
                         RETURN QUERY SELECT
                             ${value(MessageDeleteResultCode.MESSAGE_NOT_FOUND)};
                         RETURN;
-                    ELSIF NOT v_message."is_locked" THEN
+                    ELSIF NOT v_message."is_locked" OR v_message."num_attempts" <> p_num_attempts THEN
                         RETURN QUERY SELECT
                             ${value(MessageDeleteResultCode.MESSAGE_STATE_INVALID)};
                         RETURN;

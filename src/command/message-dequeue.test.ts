@@ -103,12 +103,13 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
         previouslyNotAvailable = false
         expect(result.message).toMatchObject({ content: Buffer.from(messageContents[counter]) })
 
-        if (result.message.numAttempts === 0) {
+        if (result.message.numAttempts === 1) {
             if (counter % 15 === 0) {
                 continue
             } else if (counter % 10 === 0) {
                 await new MessageDeferCommand({
                     schema: SCHEMA,
+                    numAttempts: result.message.numAttempts,
                     id: result.message.id
                 }).execute(pool)
             }
@@ -120,7 +121,9 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
 
         counter += 1
         await new MessageDeleteCommand({
-            schema: SCHEMA, id: result.message.id
+            schema: SCHEMA,
+            id: result.message.id,
+            numAttempts: result.message.numAttempts,
         }).execute(pool)
     }
 })

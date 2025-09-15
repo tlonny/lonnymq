@@ -23,6 +23,12 @@ export enum MessageDeferResultCode {
     MESSAGE_DEFERRED
 }
 
+export enum MessageHeartbeatResultCode {
+    MESSAGE_NOT_FOUND,
+    MESSAGE_STATE_INVALID,
+    MESSAGE_HEARTBEATEDED
+}
+
 export enum MessageEventType {
     MESSAGE_CREATED,
     MESSAGE_DELETED,

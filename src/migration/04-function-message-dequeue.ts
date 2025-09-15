@@ -58,7 +58,7 @@ export const migrationFunctionMessageDequeue = {
                                 'is_unlocked', TRUE,
                                 'channel_name', v_message_locked.channel_name,
                                 'name', v_message_locked.name,
-                                'num_attempts', v_message_locked.num_attempts
+                                'num_attempts', v_message_locked.num_attempts + 1
                             );
                         RETURN;
                     END IF;
@@ -158,7 +158,7 @@ export const migrationFunctionMessageDequeue = {
                             'is_unlocked', FALSE,
                             'channel_name', v_message_dequeue.channel_name,
                             'name', v_message_dequeue.name,
-                            'num_attempts', v_message_dequeue.num_attempts
+                            'num_attempts', v_message_dequeue.num_attempts + 1
                         );
                     RETURN;
                 END;

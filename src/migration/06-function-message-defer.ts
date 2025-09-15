@@ -12,6 +12,7 @@ export const migrationFunctionMessageDefer = {
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
                     p_id UUID,
+                    p_num_attempts BIGINT,
                     p_delay_ms BIGINT,
                     p_state BYTEA
                 )
@@ -29,6 +30,7 @@ export const migrationFunctionMessageDefer = {
                     SELECT
                         "message"."id",
                         "message"."channel_name",
+                        "message"."num_attempts",
                         "message"."is_locked",
                         "message"."seq_no"
                     FROM ${ref(params.schema)}."message"
@@ -40,7 +42,7 @@ export const migrationFunctionMessageDefer = {
                         RETURN QUERY SELECT
                             ${value(MessageDeferResultCode.MESSAGE_NOT_FOUND)};
                         RETURN;
-                    ELSIF NOT v_message."is_locked" THEN
+                    ELSIF NOT v_message."is_locked" OR v_message."num_attempts" <> p_num_attempts THEN
                         RETURN QUERY SELECT
                             ${value(MessageDeferResultCode.MESSAGE_STATE_INVALID)};
                         RETURN;

@@ -8,8 +8,9 @@ import { migrationFunctionMessageCreate } from "@src/migration/03-function-messa
 import { migrationFunctionMessageDequeue } from "@src/migration/04-function-message-dequeue"
 import { migrationFunctionMessageDelete } from "@src/migration/05-function-message-delete"
 import { migrationFunctionMessageDefer } from "@src/migration/06-function-message-defer"
-import { migrationFunctionChannelPolicySet } from "@src/migration/07-function-channel-policy-set"
+import { migrationFunctionMessageHeartbeat } from "@src/migration/07-function-message-heartbeat"
 import { migrationFunctionChannelPolicyClear } from "@src/migration/08-function-channel-policy-clear"
+import { migrationFunctionChannelPolicySet } from "@src/migration/09-function-channel-policy-set"
 import { QueueBatch } from "@src/queue/batch"
 import { QueueChannel } from "@src/queue/channel"
 import { QueueMessage } from "@src/queue/message"
@@ -72,6 +73,7 @@ export class Queue {
             migrationFunctionMessageDequeue,
             migrationFunctionMessageDelete,
             migrationFunctionMessageDefer,
+            migrationFunctionMessageHeartbeat,
             migrationFunctionChannelPolicySet,
             migrationFunctionChannelPolicyClear,
         ]

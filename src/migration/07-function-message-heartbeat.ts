@@ -5,8 +5,7 @@ import { ref, sql, value } from "@src/core/sql"
 export const migrationFunctionMessageHeartbeat = {
     name: pathNormalize(__filename),
     sql: (params : {
-        schema: string,
-        eventChannel: string | null,
+        schema: string
     }) => {
         return [
             sql`

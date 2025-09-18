@@ -22,7 +22,6 @@ export const migrationFunctionMessageCreate = {
                 ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
-                    v_active_next_at TIMESTAMP;
                     v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
@@ -57,7 +56,7 @@ export const migrationFunctionMessageCreate = {
                         v_now,
                         v_now
                     ) ON CONFLICT ("name") 
-                    DO UPDATE SET "id" = EXCLUDED."id"
+                    DO UPDATE SET "name" = EXCLUDED."name"
                     RETURNING
                         "id",
                         "current_size",

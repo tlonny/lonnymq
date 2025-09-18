@@ -61,13 +61,11 @@ export class QueueMessage {
 
     async heartbeat(params: {
         databaseClient: DatabaseClient,
-        delayMs?: number
     }) : Promise<MessageDeferCommandResult> {
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,
-            delayMs: params.delayMs,
         }).execute(params.databaseClient)
     }
 

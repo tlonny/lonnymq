@@ -26,7 +26,7 @@ export enum MessageDeferResultCode {
 export enum MessageHeartbeatResultCode {
     MESSAGE_NOT_FOUND,
     MESSAGE_STATE_INVALID,
-    MESSAGE_HEARTBEATEDED
+    MESSAGE_HEARTBEATED
 }
 
 export enum MessageEventType {

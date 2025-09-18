@@ -48,7 +48,7 @@ export const migrationFunctionMessageHeartbeat = {
                     WHERE "id" = p_id;
 
                     RETURN QUERY SELECT
-                        ${value(MessageHeartbeatResultCode.MESSAGE_HEARTBEATEDED)};
+                        ${value(MessageHeartbeatResultCode.MESSAGE_HEARTBEATED)};
                     RETURN;
                 END;
                 $$ LANGUAGE plpgsql;

@@ -1,0 +1,77 @@
+import { sql, value } from "@src/core/sql"
+import { channelDequeueQuery, messageLockedDequeueQuery, messageNextDequeueQuery } from "@src/migration/04-function-message-dequeue"
+import { Queue } from "@src/queue"
+import { beforeEach, test, expect } from "bun:test"
+import { Pool } from "pg"
+
+const SCHEMA = "test"
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const queue = new Queue({ schema: SCHEMA })
+
+beforeEach(async () => {
+    await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
+    await pool.query(`CREATE SCHEMA "${SCHEMA}"`)
+    for (const migration of queue.migrations()) {
+        await pool.query(migration)
+    }
+})
+
+test("messageLockedDequeueQuery uses index scans", async () => {
+    const client = await pool.connect()
+    try {
+        await client.query("BEGIN")
+        await client.query("SET LOCAL enable_seqscan = OFF")
+        await client.query("SET LOCAL enable_bitmapscan = OFF")
+        const query = sql`
+            EXPLAIN (COSTS OFF)
+            ${messageLockedDequeueQuery({ now: sql`NOW()`, schema: SCHEMA })}
+        `
+        const result = await client.query(query.value)
+        expect(result.rows.length).toBeGreaterThan(0)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        await client.query("COMMIT")
+    } finally {
+        client.query("ROLLBACK")
+        await client.release()
+    }
+})
+
+test("channelDequeueQuery uses index scans", async () => {
+    const client = await pool.connect()
+    try {
+        await client.query("BEGIN")
+        await client.query("SET LOCAL enable_seqscan = OFF")
+        await client.query("SET LOCAL enable_bitmapscan = OFF")
+        const query = sql`
+            EXPLAIN (COSTS OFF)
+            ${channelDequeueQuery({ schema: SCHEMA })}
+        `
+        const result = await client.query(query.value)
+        expect(result.rows.length).toBeGreaterThan(0)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        await client.query("COMMIT")
+    } finally {
+        client.query("ROLLBACK")
+        await client.release()
+    }
+})
+
+test("messageNextDequeueQuery uses index scans", async () => {
+    const client = await pool.connect()
+    try {
+        await client.query("BEGIN")
+        await client.query("SET LOCAL enable_seqscan = OFF")
+        await client.query("SET LOCAL enable_bitmapscan = OFF")
+        const query = sql`
+            EXPLAIN (COSTS OFF)
+            ${messageNextDequeueQuery({ schema: SCHEMA, channelName: value("foo") })}
+        `
+        const result = await client.query(query.value)
+        expect(result.rows.length).toBeGreaterThan(0)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        await client.query("COMMIT")
+    } finally {
+        client.query("ROLLBACK")
+        await client.release()
+    }
+})

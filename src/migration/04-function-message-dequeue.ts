@@ -1,12 +1,76 @@
 import { MessageDequeueResultCode } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
-import { ref, sql, value } from "@src/core/sql"
+import { ref, sql, value, type SqlNode } from "@src/core/sql"
+
+export const messageLockedDequeueQuery = (params : {
+    schema: string,
+    now: SqlNode,
+}) => sql`
+    SELECT
+        "message"."id",
+        "message"."name",
+        "message"."state",
+        "message"."content",
+        "message"."channel_name",
+        "message"."lock_ms",
+        "message"."unlock_at",
+        "message"."num_attempts"
+    FROM ${ref(params.schema)}."message"
+    WHERE "is_locked"
+    AND "unlock_at" <= ${params.now}
+    ORDER BY "unlock_at" ASC
+`
+
+export const channelDequeueQuery = (params : {
+    schema: string
+}) => sql`
+    SELECT
+        "channel_state"."id",
+        "channel_state"."name",
+        "channel_state"."release_interval_ms",
+        "channel_state"."message_id",
+        "channel_state"."active_next_at",
+        "channel_state"."active_prev_at",
+        "channel_state"."current_concurrency"
+    FROM ${ref(params.schema)}."channel_state"
+    WHERE "message_id" IS NOT NULL
+    AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency")
+    ORDER BY "active_next_at" ASC
+`
+
+export const messageNextDequeueQuery = (params : {
+    schema: string,
+    channelName: SqlNode
+}) => sql`
+    SELECT
+        "message"."id",
+        "message"."dequeue_at",
+        "message"."seq_no"
+    FROM ${ref(params.schema)}."message"
+    WHERE NOT "is_locked"
+    AND "channel_name" = ${params.channelName}
+    ORDER BY "dequeue_at" ASC, "seq_no" ASC
+`
 
 export const migrationFunctionMessageDequeue = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string
     }) => {
+        const messageLockedDequeue = messageLockedDequeueQuery({
+            now: sql`v_now`,
+            schema: params.schema,
+        })
+
+        const messageNextDequeue = messageNextDequeueQuery({
+            channelName: sql`v_channel_state."name"`,
+            schema: params.schema,
+        })
+
+        const channelDequeue = channelDequeueQuery({
+            schema: params.schema,
+        })
+
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_dequeue" ()
@@ -25,19 +89,7 @@ export const migrationFunctionMessageDequeue = {
                 BEGIN
                     v_now := NOW();
 
-                    SELECT
-                        "message"."id",
-                        "message"."name",
-                        "message"."state",
-                        "message"."content",
-                        "message"."channel_name",
-                        "message"."lock_ms",
-                        "message"."unlock_at",
-                        "message"."num_attempts"
-                    FROM ${ref(params.schema)}."message"
-                    WHERE "is_locked"
-                    AND "unlock_at" <= v_now
-                    ORDER BY "unlock_at" ASC
+                    ${messageLockedDequeue}
                     FOR UPDATE
                     SKIP LOCKED
                     LIMIT 1
@@ -63,18 +115,7 @@ export const migrationFunctionMessageDequeue = {
                         RETURN;
                     END IF;
 
-                    SELECT
-                        "channel_state"."id",
-                        "channel_state"."name",
-                        "channel_state"."release_interval_ms",
-                        "channel_state"."message_id",
-                        "channel_state"."active_next_at",
-                        "channel_state"."active_prev_at",
-                        "channel_state"."current_concurrency"
-                    FROM ${ref(params.schema)}."channel_state"
-                    WHERE "message_id" IS NOT NULL
-                    AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency")
-                    ORDER BY "active_next_at" ASC
+                    ${channelDequeue}
                     FOR UPDATE
                     SKIP LOCKED
                     LIMIT 1
@@ -118,14 +159,7 @@ export const migrationFunctionMessageDequeue = {
                         "unlock_at" = v_now + (v_message_dequeue."lock_ms" * INTERVAL '1 millisecond')
                     WHERE "id" = v_message_dequeue."id";
 
-                    SELECT
-                        "message"."id",
-                        "message"."dequeue_at",
-                        "message"."seq_no"
-                    FROM ${ref(params.schema)}."message"
-                    WHERE NOT "is_locked"
-                    AND "channel_name" = v_message_dequeue."channel_name"
-                    ORDER BY "dequeue_at" ASC, "seq_no" ASC
+                    ${messageNextDequeue}
                     LIMIT 1
                     INTO v_message_next;
 

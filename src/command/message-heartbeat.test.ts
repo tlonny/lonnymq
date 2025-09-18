@@ -43,7 +43,7 @@ test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
         id: messageDequeue2Result.message.id,
         numAttempts: messageDequeue2Result.message.numAttempts,
     }).execute(pool)
-    expect(messageHeartbeatResult).toMatchObject({ resultType: "MESSAGE_HEARTBEATEDED" })
+    expect(messageHeartbeatResult).toMatchObject({ resultType: "MESSAGE_HEARTBEATED" })
 
     const messageDequeue3Result = await messageDequeueCommand.execute(pool)
     expect(messageDequeue3Result).toMatchObject({ resultType: "MESSAGE_NOT_AVAILABLE" })

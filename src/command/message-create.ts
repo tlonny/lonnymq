@@ -1,4 +1,4 @@
-import { LOCK_MS_DEFAULT, DELAY_MS_DEFAULT, MessageCreateResultCode } from "@src/core/constant"
+import { DELAY_MS_DEFAULT, MessageCreateResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
 import { randomUUID } from "node:crypto"
@@ -39,7 +39,8 @@ export type MessageCreateCommandResult =
 
 export class MessageCreateCommand {
 
-    readonly schema: string
+    private readonly schema: string
+
     readonly channelName: string
     readonly name: string | null
     readonly content: Buffer
@@ -53,14 +54,11 @@ export class MessageCreateCommand {
         channelName: string,
         name?: string,
         content: Buffer,
-        lockMs?: number,
+        lockMs: number,
         delayMs?: number,
     }) {
         const name = params.name ?? null
-        const lockMs = params.lockMs === undefined
-            ? LOCK_MS_DEFAULT
-            : Math.max(0, params.lockMs)
-
+        const lockMs = Math.max(0, params.lockMs)
         const delayMs = params.delayMs === undefined
             ? DELAY_MS_DEFAULT
             : params.delayMs

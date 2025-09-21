@@ -52,7 +52,7 @@ export type MessageDequeueCommandResult =
 
 export class MessageDequeueCommand {
 
-    readonly schema: string
+    private readonly schema: string
 
     constructor(params: {
         schema: string,

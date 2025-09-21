@@ -24,7 +24,7 @@ export class QueueBatchChannelMessage {
 
     create(params : {
         name?: string,
-        lockMs?: number,
+        lockMs: number,
         content: Buffer,
         delayMs?: number,
     }) : QueueBatchChannelMessageCreateResult {

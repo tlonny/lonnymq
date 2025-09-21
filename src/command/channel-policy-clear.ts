@@ -3,7 +3,8 @@ import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicyClearCommand {
 
-    readonly schema: string
+    private readonly schema: string
+
     readonly channelName: string
     readonly createdAt: Date
 
@@ -14,14 +15,6 @@ export class ChannelPolicyClearCommand {
         this.schema = params.schema
         this.channelName = params.channelName
         this.createdAt = new Date()
-    }
-
-    sortKeyGet(): string {
-        return JSON.stringify([
-            this.channelName,
-            null,
-            this.createdAt.toISOString(),
-        ])
     }
 
     async execute(databaseClient: DatabaseClient): Promise<void> {

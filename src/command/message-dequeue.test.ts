@@ -24,6 +24,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
     const messageCreate1Command = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        lockMs: 600,
         content: Buffer.from("hello")
     })
 
@@ -39,6 +40,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
     const messageCreate2Command = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        lockMs: 600,
         content: Buffer.from("hello")
     })
 

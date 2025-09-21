@@ -76,12 +76,14 @@ test("MessageCreateCommand drops messages if size constaints are breached", asyn
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 20,
+        lockMs: 600,
         content: Buffer.from("hello")
     })
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 10,
+        lockMs: 600,
         content: Buffer.from("world")
     })
 
@@ -121,12 +123,14 @@ test("MessageCreateCommand deduplicates messages with the same name if not proce
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 20,
+        lockMs: 600,
         content: Buffer.from("hello"),
         name: "my-message",
     })
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        lockMs: 600,
         delayMs: 10,
         content: Buffer.from("world"),
         name: "my-message",
@@ -161,6 +165,7 @@ test("MessageCreateCommand doesn't deduplicate messages with the same name if on
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 0,
+        lockMs: 600,
         content: Buffer.from("hello"),
         name: "my-message",
     })
@@ -169,6 +174,7 @@ test("MessageCreateCommand doesn't deduplicate messages with the same name if on
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 0,
+        lockMs: 600,
         content: Buffer.from("world"),
         name: "my-message",
     })
@@ -199,12 +205,14 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 0,
+        lockMs: 600,
         content: Buffer.from("hello"),
     })
 
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        lockMs: 600,
         delayMs: -50,
         content: Buffer.from("hello"),
     })

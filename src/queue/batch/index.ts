@@ -1,4 +1,4 @@
-import { type DatabaseClient } from "@src/core/database"
+import { type DatabaseClient, type DatabaseClientAdaptor } from "@src/core/database"
 import { QueueBatchChannel } from "@src/queue/batch/channel"
 
 type BatchedCommand = {
@@ -12,16 +12,19 @@ const compareFn = (a: BatchedCommand, b: BatchedCommand): number => {
     return a.sortKey.localeCompare(b.sortKey)
 }
 
-export class QueueBatch {
+export class QueueBatch<T> {
 
     private readonly commands: BatchedCommand[]
     private readonly schema: string
+    private readonly adaptor: DatabaseClientAdaptor<T>
 
     constructor(params : {
         schema: string,
+        adaptor: DatabaseClientAdaptor<T>
     }) {
-        this.commands = []
         this.schema = params.schema
+        this.adaptor = params.adaptor
+        this.commands = []
     }
 
     channel(channelName: string): QueueBatchChannel {
@@ -35,10 +38,11 @@ export class QueueBatch {
     }
 
     async execute(params : {
-        databaseClient: DatabaseClient
+        databaseClient: T
     }): Promise<void> {
+        const adaptedClient = this.adaptor(params.databaseClient)
         for (const command of this.commands.sort(compareFn)) {
-            await command.execute(params.databaseClient)
+            await command.execute(adaptedClient)
         }
     }
 }

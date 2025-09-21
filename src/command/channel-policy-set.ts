@@ -3,7 +3,8 @@ import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicySetCommand {
 
-    readonly schema: string
+    private readonly schema: string
+
     readonly channelName: string
     readonly maxSize: number | null
     readonly maxConcurrency: number | null
@@ -36,14 +37,6 @@ export class ChannelPolicySetCommand {
             : null
 
         this.createdAt = new Date()
-    }
-
-    sortKeyGet(): string {
-        return JSON.stringify([
-            this.channelName,
-            null,
-            this.createdAt.toISOString(),
-        ])
     }
 
     async execute(databaseClient: DatabaseClient): Promise<void> {

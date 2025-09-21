@@ -1,4 +1,4 @@
-import { fromHours, fromSecs } from "@src/core/ms"
+import { fromSecs } from "@src/core/ms"
 
 export enum MessageCreateResultCode {
     MESSAGE_CREATED,
@@ -36,4 +36,3 @@ export enum MessageEventType {
 }
 
 export const DELAY_MS_DEFAULT = fromSecs(0)
-export const LOCK_MS_DEFAULT = fromHours(1)

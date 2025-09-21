@@ -26,7 +26,8 @@ export type MessageDeleteCommandResult =
 
 export class MessageDeleteCommand {
 
-    readonly schema: string
+    private readonly schema: string
+
     readonly id: string
     readonly numAttempts: number
 

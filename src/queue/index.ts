@@ -1,5 +1,5 @@
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
-import type { DatabaseClient } from "@src/core/database"
+import type { DatabaseClient, DatabaseClientAdaptor } from "@src/core/database"
 import { dedent } from "@src/core/dedent"
 import { migrationTableChannelPolicy } from "@src/migration/00-table-channel-policy"
 import { migrationTableChannelState } from "@src/migration/01-table-channel-state"
@@ -15,28 +15,38 @@ import { QueueBatch } from "@src/queue/batch"
 import { QueueChannel } from "@src/queue/channel"
 import { QueueMessage } from "@src/queue/message"
 
-export type MessageDequeueResult =
+export type MessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: number | null }
-    | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage }
+    | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage<T> }
 
-export class Queue {
+type QueueParams<T> = T extends DatabaseClient
+    ? { schema: string, adaptor?: DatabaseClientAdaptor<T> }
+    : { schema: string, adaptor: DatabaseClientAdaptor<T> }
+
+export class Queue<T = DatabaseClient> {
     private readonly schema: string
+    private readonly adaptor: DatabaseClientAdaptor<T>
 
-    constructor(params : { schema: string }) {
+    constructor(params : QueueParams<T>) {
         this.schema = params.schema
+        this.adaptor = params.adaptor
+            ? params.adaptor
+            : (x : DatabaseClient) => x
     }
 
     async dequeue(params: {
-        databaseClient: DatabaseClient
-    }): Promise<MessageDequeueResult> {
+        databaseClient: T
+    }): Promise<MessageDequeueResult<T>> {
         const command = new MessageDequeueCommand({ schema: this.schema })
-        const result = await command.execute(params.databaseClient)
+        const adaptedClient = this.adaptor(params.databaseClient)
+        const result = await command.execute(adaptedClient)
 
         if (result.resultType === "MESSAGE_DEQUEUED") {
             return {
                 resultType: "MESSAGE_DEQUEUED",
                 message: new QueueMessage({
                     schema: this.schema,
+                    adaptor: this.adaptor,
                     id: result.message.id,
                     channelName: result.message.channelName,
                     name: result.message.name,
@@ -51,15 +61,19 @@ export class Queue {
         }
     }
 
-    channel(channelName: string): QueueChannel {
+    channel(channelName: string): QueueChannel<T> {
         return new QueueChannel({
+            adaptor: this.adaptor,
             schema: this.schema,
             channelName: channelName
         })
     }
 
     batch() {
-        return new QueueBatch({ schema: this.schema })
+        return new QueueBatch<T>({
+            schema: this.schema,
+            adaptor: this.adaptor
+        })
     }
 
     migrations(params: {

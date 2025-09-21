@@ -1,11 +1,12 @@
 import { MessageDeferCommand, type MessageDeferCommandResult } from "@src/command/message-defer"
 import { MessageDeleteCommand, type MessageDeleteCommandResult } from "@src/command/message-delete"
-import type { DatabaseClient } from "@src/core/database"
+import type { DatabaseClientAdaptor } from "@src/core/database"
 
 
-export class QueueMessage {
+export class QueueMessage<T> {
 
     private readonly schema: string
+    private readonly adaptor: DatabaseClientAdaptor<T>
 
     readonly id : string
     readonly isUnlocked: boolean
@@ -17,6 +18,7 @@ export class QueueMessage {
 
     constructor(params: {
         schema: string,
+        adaptor: DatabaseClientAdaptor<T>
         id: string,
         channelName: string,
         isUnlocked: boolean,
@@ -26,6 +28,7 @@ export class QueueMessage {
         numAttempts: number,
     }) {
         this.schema = params.schema
+        this.adaptor = params.adaptor
         this.id = params.id
         this.channelName = params.channelName
         this.isUnlocked = params.isUnlocked
@@ -36,37 +39,40 @@ export class QueueMessage {
     }
 
     async defer(params: {
-        databaseClient: DatabaseClient,
+        databaseClient: T,
         delayMs?: number,
         state?: Buffer
     }) : Promise<MessageDeferCommandResult> {
+        const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,
             delayMs: params.delayMs,
             state: params.state,
-        }).execute(params.databaseClient)
+        }).execute(adaptedClient)
     }
 
     async delete(params: {
-        databaseClient: DatabaseClient,
+        databaseClient: T,
     }) : Promise<MessageDeleteCommandResult> {
+        const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageDeleteCommand({
             schema: this.schema,
             numAttempts: this.numAttempts,
             id: this.id,
-        }).execute(params.databaseClient)
+        }).execute(adaptedClient)
     }
 
     async heartbeat(params: {
-        databaseClient: DatabaseClient,
+        databaseClient: T,
     }) : Promise<MessageDeferCommandResult> {
+        const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,
-        }).execute(params.databaseClient)
+        }).execute(adaptedClient)
     }
 
 }

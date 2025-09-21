@@ -25,7 +25,9 @@ export type MessageHeartbeatCommandResult =
     | MessageHeartbeatCommandResultMessageHeartbeated
 
 export class MessageHeartbeatCommand {
-    readonly schema: string
+
+    private readonly schema: string
+
     readonly id: string
     readonly numAttempts: number
 

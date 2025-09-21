@@ -11,6 +11,8 @@ export interface DatabaseClient {
     query(query : string, params: Array<unknown>): Promise<DatabaseClientQueryResult>
 }
 
+export type DatabaseClientAdaptor<T> = (client: T) => DatabaseClient
+
 export class DatabaseCommandBatcher {
 
     private readonly commands: DatabaseCommand[]

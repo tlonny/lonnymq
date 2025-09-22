@@ -52,13 +52,13 @@ export {
 } from "@src/queue"
 
 export type { QueueMessage } from "@src/queue/message"
-export type { QueueChannel } from "@src/queue/channel"
-export type { QueueChannelMessage } from "@src/queue/channel/message"
-export type { QueueChannelPolicy } from "@src/queue/channel/policy"
+export type { QueueMessageModule } from "@src/queue/module/message"
+export type { QueueChannelModule } from "@src/queue/module/channel"
+export type { QueueChannelMessageModule } from "@src/queue/module/channel/message"
+export type { QueueChannelPolicyModule } from "@src/queue/module/channel/policy"
 
 export type { QueueBatch } from "@src/queue/batch"
-export type { QueueBatchChannel } from "@src/queue/batch/channel"
-export type { QueueBatchChannelMessage } from "@src/queue/batch/channel/message"
-export type { QueueBatchChannelPolicy } from "@src/queue/batch/channel/policy"
-
-
+export type { QueueBatchMessageModule } from "@src/queue/batch/module/message"
+export type { QueueBatchChannelModule } from "@src/queue/batch/module/channel"
+export type { QueueBatchChannelMessageModule } from "@src/queue/batch/module/channel/message"
+export type { QueueBatchChannelPolicyModule } from "@src/queue/batch/module/channel/policy"

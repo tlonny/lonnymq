@@ -2,7 +2,7 @@ import { ChannelPolicyClearCommand } from "@src/command/channel-policy-clear"
 import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
-export class QueueChannelPolicy<T> {
+export class QueueChannelPolicyModule<T> {
 
     private readonly schema: string
     private readonly adaptor: DatabaseClientAdaptor<T>

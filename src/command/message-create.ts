@@ -1,5 +1,6 @@
 import { DELAY_MS_DEFAULT } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
+import { randomSlug } from "@src/core/random"
 import { ref, sql } from "@src/core/sql"
 import { randomUUID } from "node:crypto"
 
@@ -16,7 +17,7 @@ export class MessageCreateCommand {
 
     constructor(params: {
         schema: string,
-        channelName: string,
+        channelName?: string,
         content: Buffer,
         lockMs: number,
         delayMs?: number,
@@ -28,7 +29,7 @@ export class MessageCreateCommand {
 
         this.id = randomUUID()
         this.schema = params.schema
-        this.channelName = params.channelName
+        this.channelName = params.channelName ?? randomSlug()
         this.content = params.content
         this.lockMs = lockMs
         this.delayMs = delayMs

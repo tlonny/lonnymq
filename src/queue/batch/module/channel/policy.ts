@@ -2,7 +2,7 @@ import { ChannelPolicyClearCommand } from "@src/command/channel-policy-clear"
 import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
 import type { BatchedCommandRegisterFn } from "@src/queue/batch"
 
-export class QueueBatchChannelPolicy {
+export class QueueBatchChannelPolicyModule {
 
     private readonly schema: string
     private readonly channelName: string

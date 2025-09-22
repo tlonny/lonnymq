@@ -1,5 +1,6 @@
 import { type DatabaseClient, type DatabaseClientAdaptor } from "@src/core/database"
-import { QueueBatchChannel } from "@src/queue/batch/channel"
+import { QueueBatchChannelModule } from "@src/queue/batch/module/channel"
+import { QueueBatchMessageModule } from "@src/queue/batch/module/message"
 
 type BatchedCommand = {
     sortKey: string,
@@ -18,6 +19,8 @@ export class QueueBatch<T> {
     private readonly schema: string
     private readonly adaptor: DatabaseClientAdaptor<T>
 
+    readonly message : QueueBatchMessageModule
+
     constructor(params : {
         schema: string,
         adaptor: DatabaseClientAdaptor<T>
@@ -25,15 +28,18 @@ export class QueueBatch<T> {
         this.schema = params.schema
         this.adaptor = params.adaptor
         this.commands = []
+
+        this.message = new QueueBatchMessageModule({
+            schema: this.schema,
+            registerFn: (c) => this.commands.push(c)
+        })
     }
 
-    channel(channelName: string): QueueBatchChannel {
-        return new QueueBatchChannel({
+    channel(channelName: string): QueueBatchChannelModule {
+        return new QueueBatchChannelModule({
             schema: this.schema,
             channelName: channelName,
-            registerFn: (command: BatchedCommand) => {
-                this.commands.push(command)
-            }
+            registerFn: (c) => this.commands.push(c)
         })
     }
 

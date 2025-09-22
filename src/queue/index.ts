@@ -12,8 +12,9 @@ import { migrationFunctionMessageHeartbeat } from "@src/migration/07-function-me
 import { migrationFunctionChannelPolicyClear } from "@src/migration/08-function-channel-policy-clear"
 import { migrationFunctionChannelPolicySet } from "@src/migration/09-function-channel-policy-set"
 import { QueueBatch } from "@src/queue/batch"
-import { QueueChannel } from "@src/queue/channel"
+import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
+import { QueueMessageModule } from "@src/queue/module/message"
 
 export type MessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: number | null }
@@ -24,14 +25,20 @@ type QueueParams<T> = T extends DatabaseClient
     : { schema: string, adaptor: DatabaseClientAdaptor<T> }
 
 export class Queue<T = DatabaseClient> {
+
     private readonly schema: string
     private readonly adaptor: DatabaseClientAdaptor<T>
+    readonly message : QueueMessageModule<T>
 
     constructor(params : QueueParams<T>) {
         this.schema = params.schema
         this.adaptor = params.adaptor
             ? params.adaptor
             : (x : DatabaseClient) => x
+        this.message = new QueueMessageModule({
+            schema: this.schema,
+            adaptor: this.adaptor
+        })
     }
 
     async dequeue(params: {
@@ -60,8 +67,8 @@ export class Queue<T = DatabaseClient> {
         }
     }
 
-    channel(channelName: string): QueueChannel<T> {
-        return new QueueChannel({
+    channel(channelName: string): QueueChannelModule<T> {
+        return new QueueChannelModule({
             adaptor: this.adaptor,
             schema: this.schema,
             channelName: channelName

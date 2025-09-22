@@ -33,14 +33,11 @@ for (const migration of queue.migrations()) {
 
 // Create messages
 for (let ix = 0; ix < 500; ix += 1) {
-    await queue
-        .channel("myChannel")
-        .message
-        .create({ 
-            databaseClient,
-            content: Buffer.from("Hello"),
-            lockMs: 30_000 
-        })
+    await queue.message.create({ 
+        databaseClient,
+        content: Buffer.from("Hello"),
+        lockMs: 30_000 
+    })
 }
 
 // Process messages
@@ -109,7 +106,18 @@ await queue
 
 ## Message Creation
 
-You can add a message to the queue and assign it to a particular channel using the `create` function:
+You can add a message to the queue using the `create` function. By default, messages are assigned to a random channel, ensuring fair distribution:
+
+```typescript
+await queue.message.create({
+    databaseClient,
+    content: Buffer.from("Hello, world"),
+    lockMs: 30000,
+    delayMs: 5000
+})
+```
+
+If you need to assign messages to specific channels (for example, to take advantage of concurrency or rate limiting features), you can specify the channel explicitly:
 
 ```typescript
 await queue
@@ -118,8 +126,8 @@ await queue
     .create({
         databaseClient,
         content: Buffer.from("Hello, world"),
-        lockMs: 30000,  // Lock for 30 seconds
-        delayMs: 5000   // 5 second delay before available
+        lockMs: 30000,
+        delayMs: 5000
     })
 ```
 
@@ -291,32 +299,36 @@ Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform 
 
 When you need to perform multiple safe operations (message creation and channel policy changes) within a single transaction, LonnyMQ provides a batching mechanism that automatically handles proper ordering to prevent deadlocks.
 
-The batch interface mirrors the main queue interface - you call `queue.batch()` to create a batch, then use the same `.channel(name).message.create()` and `.channel(name).policy.set/clear()` methods you're already familiar with. The key difference is that batch operations are queued up and don't execute immediately.
-
-The batch system ensures that all operations are executed in a consistent lexicographical order based on channel name and message name, eliminating the possibility of deadlocks when multiple workers are performing bulk operations simultaneously.
+The batch interface mirrors a subset of the queue interface, supporting only the operations that are safe to perform together: message creation and channel policy management.
 
 ```typescript
 const batch = queue.batch()
 
-batch.channel("user-123").message.create({ 
+// Create messages (assigned to random channels)
+batch.message.create({ 
     content: Buffer.from("Welcome email"),
     lockMs: 30000
 })
 
-batch.channel("user-123").policy.set({
+// Create messages on specific channels
+batch.channel("user-notifications").message.create({ 
+    content: Buffer.from("User signup notification"),
+    lockMs: 60000
+})
+
+// Set channel policies
+batch.channel("high-priority").policy.set({
     maxConcurrency: 5,
     releaseIntervalMs: 100
 })
 
-batch.channel("notifications").message.create({ 
-    content: Buffer.from("Daily digest"),
-    lockMs: 60000
-})
-
+// Clear channel policies  
 batch.channel("analytics").policy.clear()
 
 await batch.execute({ databaseClient })
 ```
+
+The batch system ensures all operations are executed in a consistent lexicographical order, eliminating the possibility of deadlocks when multiple workers are performing bulk operations simultaneously.
 
 ## Database Clients
 

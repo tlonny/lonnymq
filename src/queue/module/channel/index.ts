@@ -1,11 +1,11 @@
 import type { DatabaseClientAdaptor } from "@src/core/database"
-import { QueueChannelMessage } from "@src/queue/channel/message"
-import { QueueChannelPolicy } from "@src/queue/channel/policy"
+import { QueueChannelMessageModule } from "@src/queue/module/channel/message"
+import { QueueChannelPolicyModule } from "@src/queue/module/channel/policy"
 
-export class QueueChannel<T> {
+export class QueueChannelModule<T> {
 
-    readonly policy : QueueChannelPolicy<T>
-    readonly message: QueueChannelMessage<T>
+    readonly policy : QueueChannelPolicyModule<T>
+    readonly message: QueueChannelMessageModule<T>
 
     constructor(params: {
         schema: string,
@@ -13,13 +13,13 @@ export class QueueChannel<T> {
         channelName: string,
     }) {
 
-        this.message = new QueueChannelMessage({
+        this.message = new QueueChannelMessageModule({
             schema: params.schema,
             adaptor: params.adaptor,
             channelName: params.channelName
         })
 
-        this.policy = new QueueChannelPolicy({
+        this.policy = new QueueChannelPolicyModule({
             schema: params.schema,
             adaptor: params.adaptor,
             channelName: params.channelName

@@ -24,9 +24,10 @@ type QueueParams<T> = T extends DatabaseClient
 
 export class Queue<T = DatabaseClient> {
 
-    private readonly schema: string
-    private readonly adaptor: DatabaseClientAdaptor<T>
+    readonly schema: string
     readonly message : QueueMessageModule<T>
+
+    private readonly adaptor: DatabaseClientAdaptor<T>
 
     constructor(params : QueueParams<T>) {
         this.schema = params.schema

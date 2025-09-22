@@ -1,15 +1,15 @@
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
 import type { DatabaseClient, DatabaseClientAdaptor } from "@src/core/database"
 import { dedent } from "@src/core/dedent"
-import { migrationTableChannelPolicy } from "@src/migration/00-table-channel-policy"
-import { migrationTableChannelState } from "@src/migration/01-table-channel-state"
-import { migrationTableMessage } from "@src/migration/02-table-message"
-import { migrationFunctionMessageCreate } from "@src/migration/03-function-message-create"
-import { migrationFunctionMessageDequeue } from "@src/migration/04-function-message-dequeue"
-import { migrationFunctionMessageDelete } from "@src/migration/05-function-message-delete"
-import { migrationFunctionMessageDefer } from "@src/migration/06-function-message-defer"
-import { migrationFunctionChannelPolicyClear } from "@src/migration/08-function-channel-policy-clear"
-import { migrationFunctionChannelPolicySet } from "@src/migration/09-function-channel-policy-set"
+import { installTableChannelPolicy } from "@src/install/00-table-channel-policy"
+import { installTableChannelState } from "@src/install/01-table-channel-state"
+import { installTableMessage } from "@src/install/02-table-message"
+import { installFunctionMessageCreate } from "@src/install/03-function-message-create"
+import { installFunctionMessageDequeue } from "@src/install/04-function-message-dequeue"
+import { installFunctionMessageDelete } from "@src/install/05-function-message-delete"
+import { installFunctionMessageDefer } from "@src/install/06-function-message-defer"
+import { installFunctionChannelPolicyClear } from "@src/install/08-function-channel-policy-clear"
+import { installFunctionChannelPolicySet } from "@src/install/09-function-channel-policy-set"
 import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
 import { QueueMessageModule } from "@src/queue/module/message"
@@ -74,22 +74,22 @@ export class Queue<T = DatabaseClient> {
         })
     }
 
-    migrations(params: {
+    install(params: {
         eventChannel?: string,
     } = {}) : string[] {
         return [
-            migrationTableChannelPolicy,
-            migrationTableChannelState,
-            migrationTableMessage,
-            migrationFunctionMessageCreate,
-            migrationFunctionMessageDequeue,
-            migrationFunctionMessageDelete,
-            migrationFunctionMessageDefer,
-            migrationFunctionChannelPolicySet,
-            migrationFunctionChannelPolicyClear,
+            installTableChannelPolicy,
+            installTableChannelState,
+            installTableMessage,
+            installFunctionMessageCreate,
+            installFunctionMessageDequeue,
+            installFunctionMessageDelete,
+            installFunctionMessageDefer,
+            installFunctionChannelPolicySet,
+            installFunctionChannelPolicyClear,
         ]
             .sort((a, b) => a.name.localeCompare(b.name))
-            .flatMap(migration => migration.sql({
+            .flatMap(install => install.sql({
                 schema: this.schema,
                 eventChannel: params.eventChannel ?? null,
             })).map(sql => dedent(sql.value))

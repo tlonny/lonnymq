@@ -26,9 +26,9 @@ databaseClient satisfies DatabaseClient
 
 const queue = new Queue({ schema: "lonny" })
 
-// Run migrations first
-for (const migration of queue.migrations()) {
-    await databaseClient.query(migration, [])
+// Install the queue
+for (const sql of queue.install()) {
+    await databaseClient.query(sql, [])
 }
 
 // Create messages
@@ -60,26 +60,7 @@ LonnyMQ can be installed from npm:
 npm install lonnymq
 ```
 
-Once the package is installed, you need to install the required database schema. LonnyMQ is agnostic to database client and migration process, providing users with an ordered list of migrations - each containing a unique name and SQL fragments to be executed.
-
-```typescript
-const queue = new Queue({ schema: "lonny" })
-const migrations = queue.migrations()
-
-// Execute migrations (in a transaction for safety)
-await databaseClient.query("BEGIN")
-try {
-    for (const migration of migrations) {
-        await databaseClient.query(migration, [])
-    }
-    await databaseClient.query("COMMIT")
-} catch (error) {
-    await databaseClient.query("ROLLBACK")
-    throw error
-}
-```
-
-**Note:** Migration SQL is not idempotent and should be executed within a transaction that can be rolled back if an error occurs.
+Once the package is installed, the queue needs to be "installed" to a postgres schema. The requisite SQL for this can be generated via: `queue.install()`.
 
 ## Channels
 
@@ -194,10 +175,10 @@ Using PostgreSQL `NOTIFY`, we can receive a granular stream of queue events:
   2. `MESSAGE_DEFERRED`
   4. `MESSAGE_DELETED`
 
-To enable this feature, ensure the optional `eventChannel` is defined when constructing the SQL migrations.
+To enable this feature, ensure the optional `eventChannel` is defined when generating the installation SQL.
 
 ```typescript
-const migrations = queue.migrations({ eventChannel: "EVENTS"})
+const install = queue.install({ eventChannel: "EVENTS"})
 ```
 
 ### Improving on Polling

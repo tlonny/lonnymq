@@ -51,7 +51,7 @@ export const messageNextDequeueQuery = (params : {
     ORDER BY "dequeue_at" ASC, "seq_no" ASC
 `
 
-export const migrationFunctionMessageDequeue = {
+export const installFunctionMessageDequeue = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string

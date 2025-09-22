@@ -15,8 +15,8 @@ const queue = new Queue({ schema: SCHEMA })
 beforeEach(async () => {
     await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
     await pool.query(`CREATE SCHEMA "${SCHEMA}"`)
-    for (const migration of queue.migrations()) {
-        await pool.query(migration)
+    for (const install of queue.install()) {
+        await pool.query(install)
     }
 })
 

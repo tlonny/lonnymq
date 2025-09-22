@@ -2,7 +2,7 @@ import { MessageDeleteResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
 
-export const migrationFunctionMessageDelete = {
+export const installFunctionMessageDelete = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,

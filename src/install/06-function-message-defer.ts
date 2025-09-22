@@ -2,7 +2,7 @@ import { MessageDeferResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
 
-export const migrationFunctionMessageDefer = {
+export const installFunctionMessageDefer = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,

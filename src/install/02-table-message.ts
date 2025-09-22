@@ -1,7 +1,7 @@
 import { pathNormalize } from "@src/core/path"
 import { ref, sql } from "@src/core/sql"
 
-export const migrationTableMessage = {
+export const installTableMessage = {
     name: pathNormalize(__filename),
     sql: (params : {
         schema: string,

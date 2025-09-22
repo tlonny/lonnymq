@@ -1,5 +1,5 @@
 import { sql, value } from "@src/core/sql"
-import { channelDequeueQuery, messageLockedDequeueQuery, messageNextDequeueQuery } from "@src/migration/04-function-message-dequeue"
+import { channelDequeueQuery, messageLockedDequeueQuery, messageNextDequeueQuery } from "@src/install/04-function-message-dequeue"
 import { Queue } from "@src/queue"
 import { beforeEach, test, expect } from "bun:test"
 import { Pool } from "pg"
@@ -11,8 +11,8 @@ const queue = new Queue({ schema: SCHEMA })
 beforeEach(async () => {
     await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
     await pool.query(`CREATE SCHEMA "${SCHEMA}"`)
-    for (const migration of queue.migrations()) {
-        await pool.query(migration)
+    for (const install of queue.install()) {
+        await pool.query(install)
     }
 })
 

@@ -1,6 +1,4 @@
-import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
 import { MessageCreateCommand } from "@src/command/message-create"
-import { MessageDequeueCommand } from "@src/command/message-dequeue"
 import { Queue } from "@src/queue"
 import { queueEventDecode } from "@src/queue/event"
 import { beforeEach, expect, test } from "bun:test"
@@ -26,7 +24,6 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         content: Buffer.from("hello"),
         delayMs: 10,
         lockMs: 20,
-        name: "my-message",
     })
 
     const client = await pool.connect()
@@ -39,9 +36,7 @@ test("MessageCreateCommand persists a message in the DB", async () => {
     })
 
     try {
-        const result = await command.execute(pool)
-        expect(result).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
+        await command.execute(pool)
         const message = await pool.query("SELECT * FROM test.message").then(res => res.rows[0])
         const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
@@ -53,7 +48,6 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         })
 
         expect(channelState).toMatchObject({
-            name: "alpha",
             current_size: 1,
             message_id: command.id,
             message_dequeue_at: message.dequeue_at,
@@ -69,135 +63,6 @@ test("MessageCreateCommand persists a message in the DB", async () => {
     } finally {
         client.release()
     }
-})
-
-test("MessageCreateCommand drops messages if size constaints are breached", async () => {
-    const firstCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        delayMs: 20,
-        lockMs: 600,
-        content: Buffer.from("hello")
-    })
-    const secondCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        delayMs: 10,
-        lockMs: 600,
-        content: Buffer.from("world")
-    })
-
-    await new ChannelPolicySetCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        maxSize: 1,
-    }).execute(pool)
-
-    const firstResult = await firstCommand.execute(pool)
-    expect(firstResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
-    const secondResult = await secondCommand.execute(pool)
-    expect(secondResult).toMatchObject({ resultType: "MESSAGE_DROPPED" })
-
-    const messages = await pool.query("SELECT * FROM test.message").then(res => res.rows)
-    expect(messages).toHaveLength(1)
-    expect(messages[0]).toMatchObject({
-        id: firstCommand.id,
-        num_attempts: "0",
-        content: Buffer.from("hello"),
-        channel_name: "alpha",
-    })
-
-    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
-    expect(channelState).toMatchObject({
-        name: "alpha",
-        current_size: 1,
-        max_size: 1,
-        message_id: firstCommand.id,
-        message_dequeue_at: messages[0].dequeue_at,
-    })
-})
-
-test("MessageCreateCommand deduplicates messages with the same name if not processed", async () => {
-    const firstCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        delayMs: 20,
-        lockMs: 600,
-        content: Buffer.from("hello"),
-        name: "my-message",
-    })
-    const secondCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        lockMs: 600,
-        delayMs: 10,
-        content: Buffer.from("world"),
-        name: "my-message",
-    })
-
-    const firstResult = await firstCommand.execute(pool)
-    expect(firstResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
-    const secondResult = await secondCommand.execute(pool)
-    expect(secondResult).toMatchObject({ resultType: "MESSAGE_DEDUPLICATED" })
-
-    const messages = await pool.query("SELECT * FROM test.message").then(res => res.rows)
-    expect(messages).toHaveLength(1)
-    expect(messages[0]).toMatchObject({
-        id: firstCommand.id,
-        num_attempts: "0",
-        content: Buffer.from("hello"),
-        channel_name: "alpha",
-    })
-
-    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
-    expect(channelState).toMatchObject({
-        name: "alpha",
-        current_size: 1,
-        message_id: firstCommand.id,
-        message_dequeue_at: messages[0].dequeue_at,
-    })
-})
-
-test("MessageCreateCommand doesn't deduplicate messages with the same name if one has been processed", async () => {
-    const firstCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        delayMs: 0,
-        lockMs: 600,
-        content: Buffer.from("hello"),
-        name: "my-message",
-    })
-
-    const secondCommand = new MessageCreateCommand({
-        schema: SCHEMA,
-        channelName: "alpha",
-        delayMs: 0,
-        lockMs: 600,
-        content: Buffer.from("world"),
-        name: "my-message",
-    })
-
-    const firstResult = await firstCommand.execute(pool)
-    expect(firstResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
-    const dequeueResult = await new MessageDequeueCommand({
-        schema: SCHEMA,
-    }).execute(pool)
-    expect(dequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
-
-    const secondResult = await secondCommand.execute(pool)
-    expect(secondResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
-    const messages = await pool.query("SELECT * FROM test.message ORDER BY seq_no").then(res => res.rows)
-    expect(messages).toHaveLength(2)
-
-    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
-    expect(channelState).toMatchObject({
-        name: "alpha",
-        current_size: 2
-    })
 })
 
 test("MessageCreateCommand correctly updates channelState when preempting a \"lower\" priority message", async () => {
@@ -217,11 +82,8 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         content: Buffer.from("hello"),
     })
 
-    const firstResult = await firstCommand.execute(pool)
-    expect(firstResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
-
-    const secondResult = await secondCommand.execute(pool)
-    expect(secondResult).toMatchObject({ resultType: "MESSAGE_CREATED" })
+    await firstCommand.execute(pool)
+    await secondCommand.execute(pool)
 
     const firstMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [firstCommand.id]).then(res => res.rows[0])
     const secondMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [secondCommand.id]).then(res => res.rows[0])

@@ -1,9 +1,9 @@
-import { MessageCreateCommand, type MessageCreateCommandResult } from "@src/command/message-create"
+import { MessageCreateCommand } from "@src/command/message-create"
 import type { BatchedCommandRegisterFn } from "@src/queue/batch"
 
 export type QueueBatchChannelMessageCreateResult = {
     messageId: string,
-    promise: Promise<MessageCreateCommandResult>
+    promise: Promise<void>
 }
 
 export class QueueBatchChannelMessage {
@@ -31,22 +31,20 @@ export class QueueBatchChannelMessage {
         const command = new MessageCreateCommand({
             schema: this.schema,
             channelName: this.channelName,
-            name: params.name,
             content: params.content,
             lockMs: params.lockMs,
             delayMs: params.delayMs,
         })
 
-        const promise = new Promise<MessageCreateCommandResult>((resolve) => {
+        const promise = new Promise<void>((resolve) => {
             this.registerFn({
                 sortKey: JSON.stringify([
                     command.channelName,
-                    command.name,
                     command.createdAt.toISOString(),
                 ]),
                 execute: (databaseClient) => command
                     .execute(databaseClient)
-                    .then((x) => resolve(x))
+                    .then(() => resolve())
             })
         })
 

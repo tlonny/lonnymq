@@ -20,21 +20,18 @@ export class QueueBatchChannelPolicy {
 
     set(params : {
         maxConcurrency?: number | null,
-        maxSize?: number | null,
         releaseIntervalMs?: number | null
     }) {
         const command = new ChannelPolicySetCommand({
             schema: this.schema,
             channelName: this.channelName,
             maxConcurrency: params.maxConcurrency,
-            maxSize: params.maxSize,
             releaseIntervalMs: params.releaseIntervalMs
         })
 
         this.registerFn({
             sortKey: JSON.stringify([
                 command.channelName,
-                null,
                 command.createdAt.toISOString(),
             ]),
             execute: async (databaseClient) => {
@@ -52,7 +49,6 @@ export class QueueBatchChannelPolicy {
         this.registerFn({
             sortKey: JSON.stringify([
                 command.channelName,
-                null,
                 command.createdAt.toISOString(),
             ]),
             execute: async (databaseClient) => {

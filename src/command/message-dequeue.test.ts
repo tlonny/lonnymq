@@ -28,8 +28,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
         content: Buffer.from("hello")
     })
 
-    const messageCreate1Result = await messageCreate1Command.execute(pool)
-    expect(messageCreate1Result).toMatchObject({ resultType: "MESSAGE_CREATED" })
+    await messageCreate1Command.execute(pool)
 
     await new ChannelPolicySetCommand({
         schema: SCHEMA,
@@ -44,8 +43,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
         content: Buffer.from("hello")
     })
 
-    const messageCreate2Result = await messageCreate2Command.execute(pool)
-    expect(messageCreate2Result).toMatchObject({ resultType: "MESSAGE_CREATED" })
+    await messageCreate2Command.execute(pool)
 
     const messageDequeueCommand = new MessageDequeueCommand({ schema: SCHEMA })
 

@@ -8,7 +8,6 @@ export const messageLockedDequeueQuery = (params : {
 }) => sql`
     SELECT
         "message"."id",
-        "message"."name",
         "message"."state",
         "message"."content",
         "message"."channel_name",
@@ -109,7 +108,6 @@ export const migrationFunctionMessageDequeue = {
                                 'id', v_message_locked.id,
                                 'is_unlocked', TRUE,
                                 'channel_name', v_message_locked.channel_name,
-                                'name', v_message_locked.name,
                                 'num_attempts', v_message_locked.num_attempts + 1
                             );
                         RETURN;
@@ -143,7 +141,6 @@ export const migrationFunctionMessageDequeue = {
 
                     SELECT
                         "message"."id",
-                        "message"."name",
                         "message"."channel_name",
                         "message"."content",
                         "message"."num_attempts",
@@ -191,7 +188,6 @@ export const migrationFunctionMessageDequeue = {
                             'id', v_message_dequeue.id,
                             'is_unlocked', FALSE,
                             'channel_name', v_message_dequeue.channel_name,
-                            'name', v_message_dequeue.name,
                             'num_attempts', v_message_dequeue.num_attempts + 1
                         );
                     RETURN;

@@ -21,7 +21,6 @@ export class QueueChannelPolicy<T> {
     set(params : {
         databaseClient: T,
         maxConcurrency?: number | null,
-        maxSize?: number | null,
         releaseIntervalMs?: number | null
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
@@ -29,7 +28,6 @@ export class QueueChannelPolicy<T> {
             schema: this.schema,
             channelName: this.channelName,
             maxConcurrency: params.maxConcurrency,
-            maxSize: params.maxSize,
             releaseIntervalMs: params.releaseIntervalMs
         }).execute(adaptedClient)
     }

@@ -1,4 +1,4 @@
-import { MessageCreateResultCode, MessageEventType } from "@src/core/constant"
+import { MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
 
@@ -13,13 +13,10 @@ export const migrationFunctionMessageCreate = {
                 CREATE FUNCTION ${ref(params.schema)}."message_create" (
                     p_id UUID,
                     p_channel_name TEXT,
-                    p_name TEXT,
                     p_content BYTEA,
                     p_lock_ms BIGINT,
                     p_delay_ms BIGINT
-                ) RETURNS TABLE (
-                    result_code INTEGER
-                ) AS $$
+                ) RETURNS VOID AS $$
                 DECLARE
                     v_now TIMESTAMP;
                     v_channel_policy RECORD;
@@ -28,58 +25,9 @@ export const migrationFunctionMessageCreate = {
                 BEGIN
                     v_now := NOW();
 
-                    SELECT
-                        "channel_policy"."max_size",
-                        "channel_policy"."max_concurrency",
-                        "channel_policy"."release_interval_ms"
-                    FROM ${ref(params.schema)}."channel_policy"
-                    WHERE "name" = p_channel_name
-                    FOR SHARE
-                    INTO v_channel_policy;
-
-                    INSERT INTO ${ref(params.schema)}."channel_state" (
-                        "name",
-                        "current_size",
-                        "current_concurrency",
-                        "max_size",
-                        "max_concurrency",
-                        "release_interval_ms",
-                        "active_prev_at",
-                        "created_at"
-                    ) VALUES (
-                        p_channel_name,
-                        0,
-                        0,
-                        v_channel_policy."max_size",
-                        v_channel_policy."max_concurrency",
-                        v_channel_policy."release_interval_ms",
-                        v_now,
-                        v_now
-                    ) ON CONFLICT ("name") 
-                    DO UPDATE SET "name" = EXCLUDED."name"
-                    RETURNING
-                        "id",
-                        "current_size",
-                        "current_concurrency",
-                        "max_size",
-                        "max_concurrency",
-                        "release_interval_ms",
-                        "active_prev_at",
-                        "message_id",
-                        "message_dequeue_at",
-                        "message_seq_no"
-                    INTO v_channel_state;
-
-                    IF v_channel_state."current_size" >= v_channel_policy."max_size" THEN
-                        RETURN QUERY SELECT
-                            ${value(MessageCreateResultCode.MESSAGE_DROPPED)};
-                        RETURN;
-                    END IF;
-
                     INSERT INTO ${ref(params.schema)}."message" (
                         "id",
                         "channel_name",
-                        "name",
                         "content",
                         "lock_ms",
                         "is_locked",
@@ -89,29 +37,55 @@ export const migrationFunctionMessageCreate = {
                     ) VALUES (
                         p_id,
                         p_channel_name,
-                        p_name,
                         p_content,
                         p_lock_ms,
                         FALSE,
                         0,
                         v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
                         v_now
-                    ) ON CONFLICT ("channel_name", "name") 
-                    WHERE "num_attempts" = 0
-                    DO UPDATE SET
-                        "channel_name" = EXCLUDED."channel_name",
-                        "name" = EXCLUDED."name"
-                    RETURNING
+                    ) RETURNING
                         "id", 
                         "seq_no",
                         "dequeue_at"
                     INTO v_message;
 
-                    IF v_message."id" != p_id THEN
-                        RETURN QUERY SELECT 
-                            ${value(MessageCreateResultCode.MESSAGE_DEDUPLICATED)};
-                        RETURN;
-                    END IF;
+                    SELECT
+                        "channel_policy"."max_concurrency",
+                        "channel_policy"."release_interval_ms"
+                    FROM ${ref(params.schema)}."channel_policy"
+                    WHERE "name" = p_channel_name
+                    FOR SHARE
+                    INTO v_channel_policy;
+
+                    INSERT INTO ${ref(params.schema)}."channel_state" (
+                        "name",
+                        "current_concurrency",
+                        "current_size",
+                        "max_concurrency",
+                        "release_interval_ms",
+                        "active_prev_at",
+                        "created_at"
+                    ) VALUES (
+                        p_channel_name,
+                        0,
+                        0,
+                        v_channel_policy."max_concurrency",
+                        v_channel_policy."release_interval_ms",
+                        v_now,
+                        v_now
+                    ) ON CONFLICT ("name") 
+                    DO UPDATE SET "name" = EXCLUDED."name"
+                    RETURNING
+                        "id",
+                        "current_concurrency",
+                        "current_size",
+                        "max_concurrency",
+                        "release_interval_ms",
+                        "active_prev_at",
+                        "message_id",
+                        "message_dequeue_at",
+                        "message_seq_no"
+                    INTO v_channel_state;
 
                     IF 
                         v_channel_state."message_id" IS NULL OR
@@ -144,10 +118,6 @@ export const migrationFunctionMessageCreate = {
                             )::TEXT
                         );
                     END IF;
-
-                    RETURN QUERY SELECT
-                        ${value(MessageCreateResultCode.MESSAGE_CREATED)};
-                    RETURN;
                 END;
                 $$ LANGUAGE plpgsql;
             `

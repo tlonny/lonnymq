@@ -6,7 +6,6 @@ export class ChannelPolicySetCommand {
     private readonly schema: string
 
     readonly channelName: string
-    readonly maxSize: number | null
     readonly maxConcurrency: number | null
     readonly releaseIntervalMs: number | null
     readonly createdAt: Date
@@ -14,7 +13,6 @@ export class ChannelPolicySetCommand {
     constructor(params: {
         schema: string,
         channelName: string,
-        maxSize?: number | null,
         maxConcurrency?: number | null,
         releaseIntervalMs?: number | null
     }) {
@@ -24,11 +22,6 @@ export class ChannelPolicySetCommand {
         const maxConcurrency = params.maxConcurrency ?? null
         this.maxConcurrency = maxConcurrency !== null
             ? Math.max(0, maxConcurrency)
-            : null
-
-        const maxSize = params.maxSize ?? null
-        this.maxSize = maxSize !== null
-            ? Math.max(0, maxSize)
             : null
 
         const releaseIntervalMs = params.releaseIntervalMs ?? null
@@ -44,12 +37,10 @@ export class ChannelPolicySetCommand {
             SELECT 1 FROM ${ref(this.schema)}."channel_policy_set"(
                 $1,
                 $2::INTEGER,
-                $3::INTEGER,
-                $4::INTEGER
+                $3::INTEGER
             )
         `.value, [
             this.channelName,
-            this.maxSize,
             this.maxConcurrency,
             this.releaseIntervalMs
         ])

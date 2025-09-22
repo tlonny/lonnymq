@@ -1,9 +1,5 @@
 import type { DatabaseClientAdaptor } from "@src/core/database"
-import { MessageCreateCommand, type MessageCreateCommandResult } from "@src/command/message-create"
-
-export interface MessageCreateResultFuture {
-    get(): Promise<MessageCreateCommandResult>
-}
+import { MessageCreateCommand } from "@src/command/message-create"
 
 export class QueueChannelMessage<T> {
 
@@ -21,18 +17,17 @@ export class QueueChannelMessage<T> {
         this.channelName = params.channelName
     }
 
-    async create(params : {
+    create(params : {
         databaseClient: T,
         name?: string,
         lockMs: number,
         content: Buffer,
         delayMs?: number,
-    }) : Promise<MessageCreateCommandResult> {
+    }) {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageCreateCommand({
             schema: this.schema,
             channelName: this.channelName,
-            name: params.name,
             content: params.content,
             lockMs: params.lockMs,
             delayMs: params.delayMs,

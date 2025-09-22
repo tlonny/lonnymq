@@ -30,7 +30,6 @@ export const migrationFunctionChannelPolicyClear = {
                         WHERE "id" = v_channel_state."id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET
-                            "max_size" = NULL,
                             "max_concurrency" = NULL,
                             "release_interval_ms" = NULL
                         WHERE "name" = p_name;

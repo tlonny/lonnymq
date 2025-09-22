@@ -19,7 +19,6 @@ type QueryResultMessageDequeued = {
         id: string,
         channel_name: string,
         is_unlocked: boolean,
-        name: string | null,
         num_attempts: number
     }
 }
@@ -34,7 +33,6 @@ export type MessageDequeueCommandResultMessageDequeued = {
         id: string,
         channelName: string,
         isUnlocked: boolean,
-        name: string | null,
         content: Buffer,
         state: Buffer | null,
         numAttempts: number,
@@ -82,7 +80,6 @@ export class MessageDequeueCommand {
                     id: result.metadata.id,
                     channelName: result.metadata.channel_name,
                     isUnlocked: result.metadata.is_unlocked,
-                    name: result.metadata.name,
                     content: result.content,
                     state: result.state,
                     numAttempts: result.metadata.num_attempts

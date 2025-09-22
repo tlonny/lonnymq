@@ -12,7 +12,6 @@ export class QueueMessage<T> {
     readonly id : string
     readonly isUnlocked: boolean
     readonly channelName: string
-    readonly name: string | null
     readonly content: Buffer
     readonly state: Buffer | null
     readonly numAttempts: number
@@ -23,7 +22,6 @@ export class QueueMessage<T> {
         id: string,
         channelName: string,
         isUnlocked: boolean,
-        name: string | null,
         content: Buffer,
         state: Buffer | null,
         numAttempts: number,
@@ -33,7 +31,6 @@ export class QueueMessage<T> {
         this.id = params.id
         this.channelName = params.channelName
         this.isUnlocked = params.isUnlocked
-        this.name = params.name
         this.content = params.content
         this.state = params.state
         this.numAttempts = params.numAttempts

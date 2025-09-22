@@ -39,14 +39,6 @@ export {
 } from "@src/command/message-defer"
 
 export {
-    MessageHeartbeatCommand,
-    type MessageHeartbeatCommandResultMessageHeartbeated,
-    type MessageHeartbeatCommandResultMessageNotFound,
-    type MessageHeartbeatCommandResultStateInvalid,
-    type MessageHeartbeatCommandResult
-} from "@src/command/message-heartbeat"
-
-export {
     Queue,
     type MessageDequeueResult,
 } from "@src/queue"

@@ -180,36 +180,6 @@ When deferring a message, you can optionally specify `delayMs` and `state` argum
 
 **Note:** The above shows just one processing pattern (defer on failure with retry limits). You have complete flexibility in how you handle message processing - you might delete messages immediately, defer them unconditionally, implement different retry strategies based on error types, or use the message metadata (attempts, state, channel) to make sophisticated routing decisions.
 
-### Message Heartbeats
-
-For long-running message processing, you can use the heartbeat functionality to extend the lock time beyond the initial `lockMs` value. This is useful when you need to process a message for longer than originally anticipated but want to keep a shorter default lock time for faster recovery.
-
-```typescript
-const dequeueResult = await queue.dequeue({ databaseClient })
-
-if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
-    const { message } = dequeueResult
-    
-    // Start a long-running process
-    const intervalId = setInterval(async () => {
-        // Send heartbeat every 10 seconds to keep the message locked
-        await message.heartbeat({ databaseClient })
-    }, 10000)
-    
-    try {
-        // Process the message (this might take a long time)
-        await longRunningProcessMessage(message.content)
-        await message.delete({ databaseClient })
-    } catch (error) {
-        await message.defer({ databaseClient, delayMs: 30000 })
-    } finally {
-        clearInterval(intervalId)
-    }
-}
-```
-
-Heartbeats reset the unlock time to the current time plus the original `lockMs` value.
-
 ### Graceful Shutdowns and Message Recovery
 
 If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput. To mitigate this problem, it's essential that you shut down gracefully by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalize all outstanding messages before exiting.
@@ -293,7 +263,6 @@ Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform 
 - Message dequeue
 - Message defer
 - Message delete
-- Message heartbeat
 
 ## Batching Operations
 

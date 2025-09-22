@@ -1,5 +1,6 @@
 import { MessageDeferCommand, type MessageDeferCommandResult } from "@src/command/message-defer"
 import { MessageDeleteCommand, type MessageDeleteCommandResult } from "@src/command/message-delete"
+import { MessageHeartbeatCommand, type MessageHeartbeatCommandResult } from "@src/command/message-heartbeat"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
 
@@ -66,9 +67,9 @@ export class QueueMessage<T> {
 
     async heartbeat(params: {
         databaseClient: T,
-    }) : Promise<MessageDeferCommandResult> {
+    }) : Promise<MessageHeartbeatCommandResult> {
         const adaptedClient = this.adaptor(params.databaseClient)
-        return new MessageDeferCommand({
+        return new MessageHeartbeatCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,

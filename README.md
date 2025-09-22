@@ -252,7 +252,7 @@ await wait(messageId)
 
 ## Deadlocks
 
-If all queue actions are isolated to their own transaction, there is zero risk of deadlocks occurring. That being said, it is *possible* to safely bulk-perform the following actions within a single transaction if we ensure they are performed in a consistent lexicographical ordering with respect to channel name:
+If all queue actions are isolated to their own transaction, there is zero risk of deadlocks occurring. That being said, it is *possible* to safely bulk-perform the following actions within a single transaction if we ensure they are performed in a consistent ordering with respect to the target channel name:
 
 - Message create
 - Channel policy set  
@@ -263,41 +263,6 @@ Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform 
 - Message dequeue
 - Message defer
 - Message delete
-
-## Batching Operations
-
-When you need to perform multiple safe operations (message creation and channel policy changes) within a single transaction, LonnyMQ provides a batching mechanism that automatically handles proper ordering to prevent deadlocks.
-
-The batch interface mirrors a subset of the queue interface, supporting only the operations that are safe to perform together: message creation and channel policy management.
-
-```typescript
-const batch = queue.batch()
-
-// Create messages (assigned to random channels)
-batch.message.create({ 
-    content: Buffer.from("Welcome email"),
-    lockMs: 30000
-})
-
-// Create messages on specific channels
-batch.channel("user-notifications").message.create({ 
-    content: Buffer.from("User signup notification"),
-    lockMs: 60000
-})
-
-// Set channel policies
-batch.channel("high-priority").policy.set({
-    maxConcurrency: 5,
-    releaseIntervalMs: 100
-})
-
-// Clear channel policies  
-batch.channel("analytics").policy.clear()
-
-await batch.execute({ databaseClient })
-```
-
-The batch system ensures all operations are executed in a consistent lexicographical order, eliminating the possibility of deadlocks when multiple workers are performing bulk operations simultaneously.
 
 ## Database Clients
 

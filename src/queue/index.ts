@@ -10,7 +10,6 @@ import { migrationFunctionMessageDelete } from "@src/migration/05-function-messa
 import { migrationFunctionMessageDefer } from "@src/migration/06-function-message-defer"
 import { migrationFunctionChannelPolicyClear } from "@src/migration/08-function-channel-policy-clear"
 import { migrationFunctionChannelPolicySet } from "@src/migration/09-function-channel-policy-set"
-import { QueueBatch } from "@src/queue/batch"
 import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
 import { QueueMessageModule } from "@src/queue/module/message"
@@ -71,13 +70,6 @@ export class Queue<T = DatabaseClient> {
             adaptor: this.adaptor,
             schema: this.schema,
             channelName: channelName
-        })
-    }
-
-    batch() {
-        return new QueueBatch<T>({
-            schema: this.schema,
-            adaptor: this.adaptor
         })
     }
 

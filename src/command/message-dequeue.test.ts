@@ -2,7 +2,7 @@ import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
 import { MessageCreateCommand } from "@src/command/message-create"
 import { MessageDeferCommand } from "@src/command/message-defer"
 import { MessageDeleteCommand } from "@src/command/message-delete"
-import { MessageDequeueCommand } from "@src/command/message-dequeue"
+import { MessageDequeueCommand, type MessageDequeueCommandResultMessageDequeued } from "@src/command/message-dequeue"
 import { Queue } from "@src/queue"
 import { sleep } from "bun"
 import { beforeEach, expect, test } from "bun:test"
@@ -19,6 +19,7 @@ beforeEach(async () => {
         await pool.query(migration)
     }
 })
+
 
 test("MessageDequeueCommand correctly increments channelState", async () => {
     const messageCreate1Command = new MessageCreateCommand({
@@ -126,4 +127,56 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
             numAttempts: result.message.numAttempts,
         }).execute(pool)
     }
+})
+
+test("MessageDequeueCommand correctly increments numAttempts after defer", async () => {
+    await new ChannelPolicySetCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        maxConcurrency: 1
+    }).execute(pool)
+
+    await new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        lockMs: 10,
+        content: Buffer.from("test message")
+    }).execute(pool)
+
+    const firstDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA }).execute(pool) as MessageDequeueCommandResultMessageDequeued
+    expect(firstDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
+    expect(firstDequeueResult.message.numAttempts).toBe(1)
+
+    await new MessageDeferCommand({
+        schema: SCHEMA,
+        numAttempts: firstDequeueResult.message.numAttempts,
+        id: firstDequeueResult.message.id
+    }).execute(pool)
+
+    const secondDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA }).execute(pool) as MessageDequeueCommandResultMessageDequeued
+    expect(secondDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
+    expect(secondDequeueResult.message.numAttempts).toBe(2)
+})
+
+test("MessageDequeueCommand correctly sets isUnlocked", async () => {
+    await new ChannelPolicySetCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        maxConcurrency: 1
+    }).execute(pool)
+
+    await new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        lockMs: 0,
+        content: Buffer.from("test message")
+    }).execute(pool)
+
+    const firstDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA }).execute(pool) as MessageDequeueCommandResultMessageDequeued
+    expect(firstDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
+    expect(firstDequeueResult.message.isUnlocked).toBe(false)
+
+    const secondDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA }).execute(pool) as MessageDequeueCommandResultMessageDequeued
+    expect(secondDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
+    expect(secondDequeueResult.message.isUnlocked).toBe(true)
 })

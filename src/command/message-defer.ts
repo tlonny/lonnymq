@@ -26,8 +26,7 @@ export type MessageDeferCommandResult =
 
 export class MessageDeferCommand {
 
-    private readonly schema: string
-
+    readonly schema: string
     readonly id: string
     readonly numAttempts: number
     readonly delayMs: number

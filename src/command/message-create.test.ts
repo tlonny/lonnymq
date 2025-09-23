@@ -23,7 +23,6 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         channelName: "alpha",
         content: Buffer.from("hello"),
         delayMs: 10,
-        lockMs: 20,
     })
 
     const client = await pool.connect()
@@ -70,14 +69,12 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         schema: SCHEMA,
         channelName: "alpha",
         delayMs: 0,
-        lockMs: 600,
         content: Buffer.from("hello"),
     })
 
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
-        lockMs: 600,
         delayMs: -50,
         content: Buffer.from("hello"),
     })

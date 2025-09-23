@@ -3,8 +3,7 @@ import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicySetCommand {
 
-    private readonly schema: string
-
+    readonly schema: string
     readonly channelName: string
     readonly maxConcurrency: number | null
     readonly releaseIntervalMs: number | null

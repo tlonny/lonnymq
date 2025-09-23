@@ -6,6 +6,9 @@ export const installTableChannelState = {
     sql: (params : {
         schema: string,
     }) => {
+        const nameIndex = [params.schema, "channel_state_name_ux"].join("_")
+        const dequeueIndex = [params.schema, "channel_state_dequeue_ix"].join("_")
+
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_state" (
@@ -25,11 +28,11 @@ export const installTableChannelState = {
                 );
             `,
             sql`
-                CREATE UNIQUE INDEX "channel_state_name_ux"
+                CREATE UNIQUE INDEX ${ref(nameIndex)}
                 ON ${ref(params.schema)}."channel_state" ("name");
             `,
             sql`
-                CREATE INDEX "channel_state_dequeue_ix"
+                CREATE INDEX ${ref(dequeueIndex)}
                 ON ${ref(params.schema)}."channel_state" (
                     "active_next_at" ASC
                 ) WHERE "message_id" IS NOT NULL

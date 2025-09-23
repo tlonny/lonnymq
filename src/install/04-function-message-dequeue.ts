@@ -11,7 +11,6 @@ export const messageLockedDequeueQuery = (params : {
         "message"."state",
         "message"."content",
         "message"."channel_name",
-        "message"."lock_ms",
         "message"."unlock_at",
         "message"."num_attempts"
     FROM ${ref(params.schema)}."message"
@@ -72,7 +71,9 @@ export const installFunctionMessageDequeue = {
 
         return [
             sql`
-                CREATE FUNCTION ${ref(params.schema)}."message_dequeue" ()
+                CREATE FUNCTION ${ref(params.schema)}."message_dequeue" (
+                    p_lock_ms BIGINT
+                )
                 RETURNS TABLE (
                     result_code INTEGER,
                     content BYTEA,
@@ -97,7 +98,7 @@ export const installFunctionMessageDequeue = {
                     IF v_message_locked."id" IS NOT NULL THEN
                         UPDATE ${ref(params.schema)}."message" SET
                             "num_attempts" = v_message_locked."num_attempts" + 1,
-                            "unlock_at" = v_now + (v_message_locked."lock_ms" * INTERVAL '1 millisecond')
+                            "unlock_at" = v_now + (p_lock_ms * INTERVAL '1 millisecond')
                         WHERE "id" = v_message_locked."id";
 
                         RETURN QUERY SELECT 
@@ -144,8 +145,7 @@ export const installFunctionMessageDequeue = {
                         "message"."channel_name",
                         "message"."content",
                         "message"."num_attempts",
-                        "message"."state",
-                        "message"."lock_ms"
+                        "message"."state"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = v_channel_state."message_id"
                     INTO v_message_dequeue;
@@ -153,7 +153,7 @@ export const installFunctionMessageDequeue = {
                     UPDATE ${ref(params.schema)}."message" SET
                         "is_locked" = TRUE,
                         "num_attempts" = v_message_dequeue."num_attempts" + 1,
-                        "unlock_at" = v_now + (v_message_dequeue."lock_ms" * INTERVAL '1 millisecond')
+                        "unlock_at" = v_now + (p_lock_ms * INTERVAL '1 millisecond')
                     WHERE "id" = v_message_dequeue."id";
 
                     ${messageNextDequeue}

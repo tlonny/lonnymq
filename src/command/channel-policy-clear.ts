@@ -3,8 +3,7 @@ import { ref, sql } from "@src/core/sql"
 
 export class ChannelPolicyClearCommand {
 
-    private readonly schema: string
-
+    readonly schema: string
     readonly channelName: string
     readonly createdAt: Date
 

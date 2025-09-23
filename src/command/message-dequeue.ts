@@ -50,12 +50,15 @@ export type MessageDequeueCommandResult =
 
 export class MessageDequeueCommand {
 
-    private readonly schema: string
+    readonly schema: string
+    readonly lockMs: number
 
     constructor(params: {
         schema: string,
+        lockMs: number,
     }) {
         this.schema = params.schema
+        this.lockMs = params.lockMs
     }
 
     async execute(databaseClient: DatabaseClient) : Promise<MessageDequeueCommandResult> {
@@ -65,8 +68,10 @@ export class MessageDequeueCommand {
                 metadata,
                 content,
                 state
-            FROM ${ref(this.schema)}."message_dequeue"()
-        `.value, []).then(res => res.rows[0] as QueryResult)
+            FROM ${ref(this.schema)}."message_dequeue"($1::BIGINT)
+        `.value, [
+            this.lockMs
+        ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE) {
             return {

@@ -13,6 +13,7 @@ import { installFunctionChannelPolicySet } from "@src/install/09-function-channe
 import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
 import { QueueMessageModule } from "@src/queue/module/message"
+import { installFunctionMessageHeartbeat } from "@src/install/07-function-message-heartbeat"
 
 export type MessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: number | null }
@@ -42,8 +43,13 @@ export class Queue<T = DatabaseClient> {
 
     async dequeue(params: {
         databaseClient: T
+        lockMs: number
     }): Promise<MessageDequeueResult<T>> {
-        const command = new MessageDequeueCommand({ schema: this.schema })
+        const command = new MessageDequeueCommand({
+            schema: this.schema,
+            lockMs: params.lockMs,
+        })
+
         const adaptedClient = this.adaptor(params.databaseClient)
         const result = await command.execute(adaptedClient)
 
@@ -85,6 +91,7 @@ export class Queue<T = DatabaseClient> {
             installFunctionMessageDequeue,
             installFunctionMessageDelete,
             installFunctionMessageDefer,
+            installFunctionMessageHeartbeat,
             installFunctionChannelPolicySet,
             installFunctionChannelPolicyClear,
         ]

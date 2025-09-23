@@ -16,7 +16,6 @@ export class QueueMessageModule<T> {
 
     async create(params : {
         databaseClient: T,
-        lockMs: number,
         content: Buffer,
         delayMs?: number,
     }) {
@@ -25,7 +24,6 @@ export class QueueMessageModule<T> {
         const command = new MessageCreateCommand({
             schema: this.schema,
             content: params.content,
-            lockMs: params.lockMs,
             delayMs: params.delayMs,
         })
 

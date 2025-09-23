@@ -19,7 +19,6 @@ export class QueueChannelMessageModule<T> {
 
     async create(params : {
         databaseClient: T,
-        lockMs: number,
         content: Buffer,
         delayMs?: number,
     }) {
@@ -28,7 +27,6 @@ export class QueueChannelMessageModule<T> {
             schema: this.schema,
             channelName: this.channelName,
             content: params.content,
-            lockMs: params.lockMs,
             delayMs: params.delayMs,
         })
 

@@ -14,7 +14,6 @@ export const installTableMessage = {
                     "seq_no" BIGSERIAL NOT NULL,
                     "content" BYTEA NOT NULL,
                     "state" BYTEA,
-                    "lock_ms" BIGINT NOT NULL,
                     "is_locked" BOOLEAN NOT NULL,
                     "num_attempts" BIGINT NOT NULL,
                     "dequeue_at" TIMESTAMP NOT NULL,

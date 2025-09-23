@@ -6,11 +6,9 @@ import { randomUUID } from "node:crypto"
 
 export class MessageCreateCommand {
 
-    private readonly schema: string
-
+    readonly schema: string
     readonly channelName: string
     readonly content: Buffer
-    readonly lockMs: number
     readonly id: string
     readonly delayMs: number
     readonly createdAt: Date
@@ -19,10 +17,8 @@ export class MessageCreateCommand {
         schema: string,
         channelName?: string,
         content: Buffer,
-        lockMs: number,
         delayMs?: number,
     }) {
-        const lockMs = Math.max(0, params.lockMs)
         const delayMs = params.delayMs === undefined
             ? DELAY_MS_DEFAULT
             : params.delayMs
@@ -31,7 +27,6 @@ export class MessageCreateCommand {
         this.schema = params.schema
         this.channelName = params.channelName ?? randomSlug()
         this.content = params.content
-        this.lockMs = lockMs
         this.delayMs = delayMs
         this.createdAt = new Date()
     }
@@ -42,14 +37,12 @@ export class MessageCreateCommand {
                 $1, 
                 $2, 
                 $3,
-                $4::BIGINT, 
-                $5::BIGINT
+                $4::BIGINT
             )
         `.value, [
             this.id,
             this.channelName,
             this.content,
-            this.lockMs,
             this.delayMs
         ])
     }

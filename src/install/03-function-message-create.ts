@@ -14,7 +14,6 @@ export const installFunctionMessageCreate = {
                     p_id UUID,
                     p_channel_name TEXT,
                     p_content BYTEA,
-                    p_lock_ms BIGINT,
                     p_delay_ms BIGINT
                 ) RETURNS VOID AS $$
                 DECLARE
@@ -29,7 +28,6 @@ export const installFunctionMessageCreate = {
                         "id",
                         "channel_name",
                         "content",
-                        "lock_ms",
                         "is_locked",
                         "num_attempts",
                         "dequeue_at",
@@ -38,7 +36,6 @@ export const installFunctionMessageCreate = {
                         p_id,
                         p_channel_name,
                         p_content,
-                        p_lock_ms,
                         FALSE,
                         0,
                         v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,

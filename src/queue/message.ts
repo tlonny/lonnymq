@@ -61,7 +61,7 @@ export class QueueMessage<T> {
         }).execute(adaptedClient)
     }
 
-    async heatbeat(params: {
+    async heartbeat(params: {
         databaseClient: T,
         lockMs: number
     }) : Promise<MessageHeartbeatCommandResult> {

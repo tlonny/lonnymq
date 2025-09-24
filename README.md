@@ -35,14 +35,16 @@ for (const sql of queue.install()) {
 for (let ix = 0; ix < 500; ix += 1) {
     await queue.message.create({ 
         databaseClient,
-        content: Buffer.from("Hello"),
-        lockMs: 30_000 
+        content: Buffer.from("Hello")
     })
 }
 
 // Process messages
 while (true) {
-    const dequeueResult = await queue.dequeue({ databaseClient })
+    const dequeueResult = await queue.dequeue({ 
+        databaseClient,
+        lockMs: 30_000  // Lock messages for 30 seconds
+    })
     if (dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
         break
     }
@@ -93,8 +95,7 @@ You can add a message to the queue using the `create` function. By default, mess
 await queue.message.create({
     databaseClient,
     content: Buffer.from("Hello, world"),
-    lockMs: 30000,
-    delayMs: 5000
+    delayMs: 5000  // Optional: delay when message becomes available
 })
 ```
 
@@ -107,21 +108,21 @@ await queue
     .create({
         databaseClient,
         content: Buffer.from("Hello, world"),
-        lockMs: 30000,
-        delayMs: 5000
+        delayMs: 5000  // Optional: delay when message becomes available
     })
 ```
-
-The `lockMs` parameter is required and specifies how long a message will remain exclusively locked after being dequeued. While locked, the message is **not available** for subsequent `dequeue()` calls, preventing duplicate processing. If your process crashes or takes longer than expected, the message will automatically become available for dequeue again after the lock expires.
 
 The `delayMs` parameter is optional and allows you to delay when the message becomes available for processing.
 
 ## Message Processing
 
-Messages can be fetched for processing by calling `dequeue` on the `Queue` - this locks the message. Once processing is complete, messages must be "finalized" via **deletion** or **deferral** (for further processing in the future).
+Messages can be fetched for processing by calling `dequeue` on the `Queue` - this locks the message for a specified duration. Once processing is complete, messages must be "finalized" via **deletion** or **deferral** (for further processing in the future).
 
 ```typescript
-const dequeueResult = await queue.dequeue({ databaseClient })
+const dequeueResult = await queue.dequeue({ 
+    databaseClient,
+    lockMs: 60000  // Lock for 60 seconds
+})
 
 if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
     const { message } = dequeueResult
@@ -157,15 +158,50 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
 }
 ```
 
+The `lockMs` parameter on `dequeue()` specifies how long a message will remain exclusively locked after being dequeued. While locked, the message is **not available** for subsequent `dequeue()` calls, preventing duplicate processing. If your process crashes or takes longer than expected, the message will automatically become available for dequeue again after the lock expires.
+
 When deferring a message, you can optionally specify `delayMs` and `state` arguments. The `delayMs` parameter tells the queue how long to wait before making the message available for reprocessing, and `state` allows you to "save your work" and implement durable and/or repeating/scheduled tasks.
 
 **Note:** The above shows just one processing pattern (defer on failure with retry limits). You have complete flexibility in how you handle message processing - you might delete messages immediately, defer them unconditionally, implement different retry strategies based on error types, or use the message metadata (attempts, state, channel) to make sophisticated routing decisions.
 
+### Extending Message Locks with Heartbeats
+
+For long-running tasks that may exceed the initial lock duration, you can extend the lock using heartbeats:
+
+```typescript
+const dequeueResult = await queue.dequeue({ 
+    databaseClient,
+    lockMs: 30000  // Initial 30-second lock
+})
+
+if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
+    const { message } = dequeueResult
+    
+    // Start long-running process
+    const longTask = processLongRunningTask(message.content)
+    
+    // Set up heartbeat to extend lock every 20 seconds
+    const heartbeatInterval = setInterval(async () => {
+        await message.heartbeat({ 
+            databaseClient,
+            lockMs: 30000  // Extend lock by another 30 seconds
+        })
+    }, 20000)
+    
+    try {
+        await longTask
+        await message.delete({ databaseClient })
+    } catch (error) {
+        await message.defer({ databaseClient, delayMs: 60000 })
+    } finally {
+        clearInterval(heartbeatInterval)
+    }
+}
+```
+
 ### Graceful Shutdowns and Message Recovery
 
-If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput. To mitigate this problem, it's essential that you shut down gracefully by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalize all outstanding messages before exiting.
-
-That said, despite our best efforts, if we run out of memory, suffer a power loss, or receive a `SIGKILL`, we will be unable to finalize messages that are currently locked. To mitigate this, we set a `lockMs` during message creation (by default this is 1 hour) which limits the maximum amount of time a message can be locked before becoming available again for dequeue. This facility ensures that regardless of the nature of the shutdown, the queue will always recover automatically.
+If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput until the lock expires. To mitigate this problem, it's essential that you shut down gracefully by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalize all outstanding messages before exiting.
 
 ## Events
 
@@ -244,6 +280,7 @@ Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform 
 - Message dequeue
 - Message defer
 - Message delete
+- Message heartbeat
 
 ## Database Clients
 
@@ -263,12 +300,10 @@ For database clients that don't match the expected interface exactly, LonnyMQ pr
 
 ```typescript
 import { Queue } from "lonnymq"
-import { Pool } from "pg"
 
-const customClient = new SomeOtherPostgresClient()
-const queue = new Queue({ 
+const queue = new Queue<NonCompliantDatabaseClient>({ 
     schema: "lonny",
-    adaptor: (client) => ({
+    adaptor: (client : NonCompliantDatabaseClient) => ({
         query: async (sql, params) => {
             // Adapt the client's interface to match DatabaseClient
             const result = await client.executeQuery(sql, params)

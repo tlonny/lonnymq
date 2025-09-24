@@ -29,14 +29,12 @@ type QueryResult =
 
 export type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
-    message: {
-        id: string,
-        channelName: string,
-        isUnlocked: boolean,
-        content: Buffer,
-        state: Buffer | null,
-        numAttempts: number,
-    }
+    id: string,
+    channelName: string,
+    isUnlocked: boolean,
+    content: Buffer,
+    state: Buffer | null,
+    numAttempts: number,
 }
 
 export type MessageDequeueCommandResultMessageNotAvailable = {
@@ -81,14 +79,12 @@ export class MessageDequeueCommand {
         } else if (result.result_code === MessageDequeueResultCode.MESSAGE_DEQUEUED) {
             return {
                 resultType: "MESSAGE_DEQUEUED",
-                message: {
-                    id: result.metadata.id,
-                    channelName: result.metadata.channel_name,
-                    isUnlocked: result.metadata.is_unlocked,
-                    content: result.content,
-                    state: result.state,
-                    numAttempts: result.metadata.num_attempts
-                }
+                id: result.metadata.id,
+                channelName: result.metadata.channel_name,
+                isUnlocked: result.metadata.is_unlocked,
+                content: result.content,
+                state: result.state,
+                numAttempts: result.metadata.num_attempts
             }
         } else {
             throw new Error("Unexpected dequeue result")

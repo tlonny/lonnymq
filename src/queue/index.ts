@@ -59,12 +59,12 @@ export class Queue<T = DatabaseClient> {
                 message: new QueueMessage({
                     schema: this.schema,
                     adaptor: this.adaptor,
-                    id: result.message.id,
-                    channelName: result.message.channelName,
-                    isUnlocked: result.message.isUnlocked,
-                    content: result.message.content,
-                    state: result.message.state,
-                    numAttempts: result.message.numAttempts,
+                    id: result.id,
+                    channelName: result.channelName,
+                    isUnlocked: result.isUnlocked,
+                    content: result.content,
+                    state: result.state,
+                    numAttempts: result.numAttempts,
                 })
             }
         } else {

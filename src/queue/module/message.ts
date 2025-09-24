@@ -29,9 +29,9 @@ export class QueueMessageModule<T> {
 
         const result = await command.execute(adaptedClient)
         return {
-            messageId: result.metadata.id,
+            messageId: result.id,
             channelName: command.channelName,
-            channelSize: result.metadata.channelSize,
+            channelSize: result.channelSize,
         }
     }
 }

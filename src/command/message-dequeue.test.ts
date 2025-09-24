@@ -53,7 +53,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 2,
-        message_id: createResult.metadata.id,
+        message_id: createResult.id,
         active_next_at: new Date(channelState.active_prev_at.getTime() + 50),
 
     })
@@ -99,29 +99,29 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
         }
 
         previouslyNotAvailable = false
-        expect(result.message).toMatchObject({ content: Buffer.from(messageContents[counter]) })
+        expect(result).toMatchObject({ content: Buffer.from(messageContents[counter]) })
 
-        if (result.message.numAttempts === 1) {
+        if (result.numAttempts === 1) {
             if (counter % 15 === 0) {
                 continue
             } else if (counter % 10 === 0) {
                 await new MessageDeferCommand({
                     schema: SCHEMA,
-                    numAttempts: result.message.numAttempts,
-                    id: result.message.id
+                    numAttempts: result.numAttempts,
+                    id: result.id
                 }).execute(pool)
             }
         }
 
         if (counter % 15 === 0) {
-            expect(result.message.isUnlocked).toBe(true)
+            expect(result.isUnlocked).toBe(true)
         }
 
         counter += 1
         await new MessageDeleteCommand({
             schema: SCHEMA,
-            id: result.message.id,
-            numAttempts: result.message.numAttempts,
+            id: result.id,
+            numAttempts: result.numAttempts,
         }).execute(pool)
     }
 })
@@ -141,17 +141,17 @@ test("MessageDequeueCommand correctly increments numAttempts after defer", async
 
     const firstDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA, lockMs: 10 }).execute(pool) as MessageDequeueCommandResultMessageDequeued
     expect(firstDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
-    expect(firstDequeueResult.message.numAttempts).toBe(1)
+    expect(firstDequeueResult.numAttempts).toBe(1)
 
     await new MessageDeferCommand({
         schema: SCHEMA,
-        numAttempts: firstDequeueResult.message.numAttempts,
-        id: firstDequeueResult.message.id
+        numAttempts: firstDequeueResult.numAttempts,
+        id: firstDequeueResult.id
     }).execute(pool)
 
     const secondDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA, lockMs: 10 }).execute(pool) as MessageDequeueCommandResultMessageDequeued
     expect(secondDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
-    expect(secondDequeueResult.message.numAttempts).toBe(2)
+    expect(secondDequeueResult.numAttempts).toBe(2)
 })
 
 test("MessageDequeueCommand correctly sets isUnlocked", async () => {
@@ -169,9 +169,9 @@ test("MessageDequeueCommand correctly sets isUnlocked", async () => {
 
     const firstDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA, lockMs: 0 }).execute(pool) as MessageDequeueCommandResultMessageDequeued
     expect(firstDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
-    expect(firstDequeueResult.message.isUnlocked).toBe(false)
+    expect(firstDequeueResult.isUnlocked).toBe(false)
 
     const secondDequeueResult = await new MessageDequeueCommand({ schema: SCHEMA, lockMs: 0 }).execute(pool) as MessageDequeueCommandResultMessageDequeued
     expect(secondDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
-    expect(secondDequeueResult.message.isUnlocked).toBe(true)
+    expect(secondDequeueResult.isUnlocked).toBe(true)
 })

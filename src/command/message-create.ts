@@ -10,7 +10,8 @@ type QueryResult = {
 
 export type MessageCreateCommandResult = {
     resultType: "MESSAGE_CREATED",
-    metadata: { id: string, channelSize: number }
+    id: string,
+    channelSize: number,
 }
 
 export class MessageCreateCommand {
@@ -57,10 +58,8 @@ export class MessageCreateCommand {
         if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
             return {
                 resultType: "MESSAGE_CREATED",
-                metadata: {
-                    id: result.metadata.id,
-                    channelSize: result.metadata.channel_size,
-                }
+                id: result.metadata.id,
+                channelSize: result.metadata.channel_size,
             }
         } else {
             throw new Error("Unexpected result code")

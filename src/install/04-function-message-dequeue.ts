@@ -182,13 +182,13 @@ export const installFunctionMessageDequeue = {
 
                     RETURN QUERY SELECT
                         ${value(MessageDequeueResultCode.MESSAGE_DEQUEUED)},
-                        v_message_dequeue.content,
-                        v_message_dequeue.state,
+                        v_message_dequeue."content",
+                        v_message_dequeue."state",
                         JSON_BUILD_OBJECT(
-                            'id', v_message_dequeue.id,
+                            'id', v_message_dequeue."id",
                             'is_unlocked', FALSE,
-                            'channel_name', v_message_dequeue.channel_name,
-                            'num_attempts', v_message_dequeue.num_attempts + 1
+                            'channel_name', v_message_dequeue."channel_name",
+                            'num_attempts', v_message_dequeue."num_attempts" + 1
                         );
                     RETURN;
                 END;

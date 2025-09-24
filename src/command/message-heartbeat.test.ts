@@ -39,8 +39,8 @@ test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({
         schema: SCHEMA,
-        id: messageDequeue2Result.message.id,
-        numAttempts: messageDequeue2Result.message.numAttempts,
+        id: messageDequeue2Result.id,
+        numAttempts: messageDequeue2Result.numAttempts,
         lockMs: 50,
     }).execute(pool)
     expect(messageHeartbeatResult).toMatchObject({ resultType: "MESSAGE_HEARTBEATED" })
@@ -62,7 +62,7 @@ test("MessageHeartbeatCommand fails on invalid numAttempts", async () => {
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({
         schema: SCHEMA,
-        id: messageDequeueResult.message.id,
+        id: messageDequeueResult.id,
         numAttempts: 0,
         lockMs: 50,
     }).execute(pool)
@@ -80,7 +80,7 @@ test("MessageHeartbeatCommand fails when not locked", async () => {
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({
         schema: SCHEMA,
-        id: result.metadata.id,
+        id: result.id,
         numAttempts: 0,
         lockMs: 50,
     }).execute(pool)

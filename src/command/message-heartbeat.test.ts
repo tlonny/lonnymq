@@ -76,11 +76,11 @@ test("MessageHeartbeatCommand fails when not locked", async () => {
         channelName: "alpha",
         content: Buffer.from("hello")
     })
-    await messageCreateCommand.execute(pool)
+    const result = await messageCreateCommand.execute(pool)
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({
         schema: SCHEMA,
-        id: messageCreateCommand.id,
+        id: result.metadata.id,
         numAttempts: 0,
         lockMs: 50,
     }).execute(pool)

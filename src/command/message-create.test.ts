@@ -35,12 +35,12 @@ test("MessageCreateCommand persists a message in the DB", async () => {
     })
 
     try {
-        await command.execute(pool)
+        const result = await command.execute(pool)
         const message = await pool.query("SELECT * FROM test.message").then(res => res.rows[0])
         const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
         expect(message).toMatchObject({
-            id: command.id,
+            id: result.metadata.id,
             num_attempts: "0",
             content: Buffer.from("hello"),
             channel_name: "alpha",
@@ -48,14 +48,13 @@ test("MessageCreateCommand persists a message in the DB", async () => {
 
         expect(channelState).toMatchObject({
             current_size: 1,
-            message_id: command.id,
             message_dequeue_at: message.dequeue_at,
+            message_id: result.metadata.id,
         })
 
         expect(events).toHaveLength(1)
         expect(events[0]).toMatchObject({
             eventType: "MESSAGE_CREATED",
-            id: command.id,
             delayMs: 10,
         })
 
@@ -79,11 +78,11 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         content: Buffer.from("hello"),
     })
 
-    await firstCommand.execute(pool)
-    await secondCommand.execute(pool)
+    const firstResult = await firstCommand.execute(pool)
+    const secondResult = await secondCommand.execute(pool)
 
-    const firstMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [firstCommand.id]).then(res => res.rows[0])
-    const secondMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [secondCommand.id]).then(res => res.rows[0])
+    const firstMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [firstResult.metadata.id]).then(res => res.rows[0])
+    const secondMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [secondResult.metadata.id]).then(res => res.rows[0])
 
     const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
     expect(channelState).toMatchObject({
@@ -92,6 +91,39 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         active_next_at: firstMessage.dequeue_at,
         message_dequeue_at: secondMessage.dequeue_at,
         message_seq_no: secondMessage.seq_no,
-        message_id: secondCommand.id,
+        message_id: secondResult.metadata.id,
+    })
+})
+
+test("MessageCreateCommand correctly returns the channel size", async () => {
+    const command = new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        content: Buffer.from("hello"),
+        delayMs: 10,
+    })
+
+    const firstResult = await command.execute(pool)
+    expect(firstResult).toMatchObject({
+        resultType: "MESSAGE_CREATED",
+        metadata: {
+            channelSize: 1
+        }
+    })
+
+    const secondResult = await command.execute(pool)
+    expect(secondResult).toMatchObject({
+        resultType: "MESSAGE_CREATED",
+        metadata: {
+            channelSize: 2
+        }
+    })
+
+    const thirdResult = await command.execute(pool)
+    expect(thirdResult).toMatchObject({
+        resultType: "MESSAGE_CREATED",
+        metadata: {
+            channelSize: 3
+        }
     })
 })

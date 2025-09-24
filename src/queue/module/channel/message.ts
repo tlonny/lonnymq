@@ -30,8 +30,11 @@ export class QueueChannelMessageModule<T> {
             delayMs: params.delayMs,
         })
 
-        await command.execute(adaptedClient)
-
-        return { messageId: command.id }
+        const result = await command.execute(adaptedClient)
+        return {
+            messageId: result.metadata.id,
+            channelName: command.channelName,
+            channelSize: result.metadata.channelSize
+        }
     }
 }

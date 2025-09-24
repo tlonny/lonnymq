@@ -1,15 +1,23 @@
-import { DELAY_MS_DEFAULT } from "@src/core/constant"
+import { DELAY_MS_DEFAULT, MessageCreateResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { randomSlug } from "@src/core/random"
 import { ref, sql } from "@src/core/sql"
-import { randomUUID } from "node:crypto"
+
+type QueryResult = {
+    result_code: MessageCreateResultCode.MESSAGE_CREATED,
+    metadata: { id: string, channel_size: number }
+}
+
+export type MessageCreateCommandResult = {
+    resultType: "MESSAGE_CREATED",
+    metadata: { id: string, channelSize: number }
+}
 
 export class MessageCreateCommand {
 
     readonly schema: string
     readonly channelName: string
     readonly content: Buffer
-    readonly id: string
     readonly delayMs: number
     readonly createdAt: Date
 
@@ -23,7 +31,6 @@ export class MessageCreateCommand {
             ? DELAY_MS_DEFAULT
             : params.delayMs
 
-        this.id = randomUUID()
         this.schema = params.schema
         this.channelName = params.channelName ?? randomSlug()
         this.content = params.content
@@ -31,19 +38,32 @@ export class MessageCreateCommand {
         this.createdAt = new Date()
     }
 
-    async execute(databaseClient: DatabaseClient): Promise<void> {
-        await databaseClient.query(sql`
-            SELECT 1 FROM ${ref(this.schema)}."message_create"(
+    async execute(databaseClient: DatabaseClient): Promise<MessageCreateCommandResult> {
+        const result = await databaseClient.query(sql`
+            SELECT 
+                result_code, 
+                metadata 
+            FROM ${ref(this.schema)}."message_create"(
                 $1, 
-                $2, 
-                $3,
-                $4::BIGINT
+                $2,
+                $3::BIGINT
             )
         `.value, [
-            this.id,
             this.channelName,
             this.content,
             this.delayMs
-        ])
+        ]).then(res => res.rows[0] as QueryResult)
+
+        if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
+            return {
+                resultType: "MESSAGE_CREATED",
+                metadata: {
+                    id: result.metadata.id,
+                    channelSize: result.metadata.channel_size,
+                }
+            }
+        } else {
+            throw new Error("Unexpected result code")
+        }
     }
 }

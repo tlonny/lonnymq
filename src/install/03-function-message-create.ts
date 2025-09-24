@@ -1,4 +1,4 @@
-import { MessageEventType } from "@src/core/constant"
+import { MessageCreateResultCode, MessageEventType } from "@src/core/constant"
 import { pathNormalize } from "@src/core/path"
 import { ref, sql, value } from "@src/core/sql"
 
@@ -11,11 +11,13 @@ export const installFunctionMessageCreate = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_create" (
-                    p_id UUID,
                     p_channel_name TEXT,
                     p_content BYTEA,
                     p_delay_ms BIGINT
-                ) RETURNS VOID AS $$
+                ) RETURNS TABLE (
+                    result_code INTEGER,
+                    metadata JSON
+                ) AS $$
                 DECLARE
                     v_now TIMESTAMP;
                     v_channel_policy RECORD;
@@ -33,7 +35,7 @@ export const installFunctionMessageCreate = {
                         "dequeue_at",
                         "created_at"
                     ) VALUES (
-                        p_id,
+                        GEN_RANDOM_UUID(),
                         p_channel_name,
                         p_content,
                         FALSE,
@@ -110,11 +112,18 @@ export const installFunctionMessageCreate = {
                             ${value(params.eventChannel)},
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_CREATED)},
-                                'id', p_id,
+                                'id', v_message."id",
                                 'delay_ms', p_delay_ms
                             )::TEXT
                         );
                     END IF;
+
+                    RETURN QUERY SELECT
+                        ${value(MessageCreateResultCode.MESSAGE_CREATED)},
+                        JSON_BUILD_OBJECT(
+                            'id', v_message."id",
+                            'channel_size', v_channel_state."current_size" + 1
+                        );
                 END;
                 $$ LANGUAGE plpgsql;
             `

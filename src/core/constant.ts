@@ -1,5 +1,9 @@
 import { fromSecs } from "@src/core/ms"
 
+export enum MessageCreateResultCode {
+    MESSAGE_CREATED
+}
+
 export enum MessageDequeueResultCode {
     MESSAGE_NOT_AVAILABLE,
     MESSAGE_DEQUEUED

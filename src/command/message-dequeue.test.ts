@@ -42,7 +42,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
         content: Buffer.from("hello")
     })
 
-    await messageCreate2Command.execute(pool)
+    const createResult = await messageCreate2Command.execute(pool)
 
     const messageDequeueCommand = new MessageDequeueCommand({ schema: SCHEMA, lockMs: 600 })
 
@@ -53,7 +53,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 2,
-        message_id: messageCreate2Command.id,
+        message_id: createResult.metadata.id,
         active_next_at: new Date(channelState.active_prev_at.getTime() + 50),
 
     })

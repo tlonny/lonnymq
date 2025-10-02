@@ -27,13 +27,13 @@ export const channelDequeueQuery = (params : {
         "channel_state"."name",
         "channel_state"."release_interval_ms",
         "channel_state"."message_id",
-        "channel_state"."active_next_at",
-        "channel_state"."active_prev_at",
+        "channel_state"."dequeue_next_at",
+        "channel_state"."dequeue_prev_at",
         "channel_state"."current_concurrency"
     FROM ${ref(params.schema)}."channel_state"
     WHERE "message_id" IS NOT NULL
     AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency")
-    ORDER BY "active_next_at" ASC
+    ORDER BY "dequeue_next_at" ASC
 `
 
 export const messageNextDequeueQuery = (params : {
@@ -120,23 +120,12 @@ export const installFunctionMessageDequeue = {
                     LIMIT 1
                     INTO v_channel_state;
 
-                    IF v_channel_state."id" IS NULL THEN
+                    IF v_channel_state."id" IS NULL OR v_channel_state."dequeue_next_at" > v_now THEN
                         RETURN QUERY SELECT
                             ${value(MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE)},
                             NULL::BYTEA,
                             NULL::BYTEA,
-                            JSON_BUILD_OBJECT('retry_ms', NULL);
-                        RETURN;
-                    END IF;
-
-                    IF v_channel_state."active_next_at" > v_now THEN
-                        RETURN QUERY SELECT
-                            ${value(MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE)},
-                            NULL::BYTEA,
-                            NULL::BYTEA,
-                            JSON_BUILD_OBJECT(
-                                'retry_ms', CEIL(1_000 * EXTRACT(EPOCH FROM v_channel_state."active_next_at" - v_now))
-                            );
+                            NULL::JSON;
                         RETURN;
                     END IF;
 
@@ -163,7 +152,7 @@ export const installFunctionMessageDequeue = {
                     IF v_message_next."id" IS NULL THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" + 1,
-                            "active_prev_at" = v_now,
+                            "dequeue_prev_at" = v_now,
                             "message_id" = NULL
                         WHERE "id" = v_channel_state."id";
                     ELSE
@@ -172,8 +161,8 @@ export const installFunctionMessageDequeue = {
                             "message_id" = v_message_next."id",
                             "message_dequeue_at" = v_message_next."dequeue_at",
                             "message_seq_no" = v_message_next."seq_no",
-                            "active_prev_at" = v_now,
-                            "active_next_at" = GREATEST(
+                            "dequeue_prev_at" = v_now,
+                            "dequeue_next_at" = GREATEST(
                                 v_message_next."dequeue_at",
                                 v_now + (COALESCE(v_channel_state."release_interval_ms", 0) * INTERVAL '1 millisecond')
                             )

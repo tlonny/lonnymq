@@ -53,7 +53,7 @@ export const installFunctionMessageDefer = {
                         "channel_state"."release_interval_ms",
                         "channel_state"."message_id",
                         "channel_state"."message_dequeue_at",
-                        "channel_state"."active_prev_at",
+                        "channel_state"."dequeue_prev_at",
                         "channel_state"."message_seq_no"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
@@ -72,8 +72,8 @@ export const installFunctionMessageDefer = {
                             "message_id" = v_message."id",
                             "message_dequeue_at" = v_dequeue_at,
                             "message_seq_no" = v_message."seq_no",
-                            "active_next_at" = GREATEST(
-                                v_channel_state."active_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                            "dequeue_next_at" = GREATEST(
+                                v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_dequeue_at
                             )
                         WHERE "name" = v_message."channel_name";

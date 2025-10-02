@@ -16,7 +16,7 @@ import { QueueMessageModule } from "@src/queue/module/message"
 import { installFunctionMessageHeartbeat } from "@src/install/07-function-message-heartbeat"
 
 export type MessageDequeueResult<T> =
-    | { resultType: "MESSAGE_NOT_AVAILABLE", retryMs: number | null }
+    | { resultType: "MESSAGE_NOT_AVAILABLE" }
     | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage<T> }
 
 type QueueParams<T> = T extends DatabaseClient

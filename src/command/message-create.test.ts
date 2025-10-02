@@ -88,7 +88,7 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
     expect(channelState).toMatchObject({
         name: "alpha",
         current_size: 2,
-        active_next_at: firstMessage.dequeue_at,
+        dequeue_next_at: firstMessage.dequeue_at,
         message_dequeue_at: secondMessage.dequeue_at,
         message_seq_no: secondMessage.seq_no,
         message_id: secondResult.id,

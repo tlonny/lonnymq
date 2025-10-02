@@ -6,9 +6,7 @@ type QueryResultMessageNotAvailable = {
     result_code: MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE,
     content: null,
     state: null,
-    metadata: {
-        retry_ms: number | null
-    },
+    metadata: null
 }
 
 type QueryResultMessageDequeued = {
@@ -38,8 +36,7 @@ export type MessageDequeueCommandResultMessageDequeued = {
 }
 
 export type MessageDequeueCommandResultMessageNotAvailable = {
-    resultType: "MESSAGE_NOT_AVAILABLE",
-    retryMs: number | null
+    resultType: "MESSAGE_NOT_AVAILABLE"
 }
 
 export type MessageDequeueCommandResult =
@@ -72,10 +69,7 @@ export class MessageDequeueCommand {
         ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageDequeueResultCode.MESSAGE_NOT_AVAILABLE) {
-            return {
-                resultType: "MESSAGE_NOT_AVAILABLE",
-                retryMs: result.metadata.retry_ms
-            }
+            return { resultType: "MESSAGE_NOT_AVAILABLE" }
         } else if (result.result_code === MessageDequeueResultCode.MESSAGE_DEQUEUED) {
             return {
                 resultType: "MESSAGE_DEQUEUED",

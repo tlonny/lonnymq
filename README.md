@@ -166,12 +166,12 @@ When deferring a message, you can optionally specify `delayMs` and `state` argum
 
 ### Extending Message Locks with Heartbeats
 
-For long-running tasks that may exceed the initial lock duration, you can extend the lock using heartbeats:
+For messages that take a long time to process, setting a large initial lock is far from ideal. A crash shortly after message dequeue will result in channel throughput being degraded for a significant time (if the channel is concurrency-constrained). To mitigate this, you can set a short initial lock time that can be periodically renewed during message processing via a heartbeat:
 
 ```typescript
 const dequeueResult = await queue.dequeue({ 
     databaseClient,
-    lockMs: 30000  // Initial 30-second lock
+    lockMs: 30000 
 })
 
 if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
@@ -184,7 +184,7 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
     const heartbeatInterval = setInterval(async () => {
         await message.heartbeat({ 
             databaseClient,
-            lockMs: 30000  // Extend lock by another 30 seconds
+            lockMs: 30000
         })
     }, 20000)
     
@@ -221,21 +221,37 @@ const install = queue.install({ eventChannel: "EVENTS"})
 
 The simplest approach for processing messages is to call `dequeue` in a loop, backing off with a sleep when no messages are available. The downside of this approach is that we lose reactivity as we increase the polling timeout interval.
 
-To improve reactivity, you can use the `retryMs` returned when failing to dequeue a message. This will either be `null` or tell you how long until the next message becomes available for processing (a message might be deferred for a period of time). Thus, you can tune your sleep to use the minimum of your `retryMs` and a default poll timeout.
+```typescript
+// Basic polling approach
+while (true) {
+    const result = await queue.dequeue({ databaseClient, lockMs: 30000 })
+    
+    if (result.resultType === "MESSAGE_NOT_AVAILABLE") {
+        await sleep(5_000) 
+        continue
+    }
+    
+    // Process message...
+    await processMessage(result.message)
+    await result.message.delete({ databaseClient })
+}
+```
 
-Unfortunately, this doesn't help in situations where a message is created or deferred while a worker is sleeping. However, by tracking the `delayMs` provided by the `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events, we can determine the minimum amount of time to sleep until a message becomes available.
+To improve reactivity, you can use the events system to track when new messages become available. By listening for `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events and tracking their `delayMs`, you can determine the optimal time to retry dequeuing:
 
 ```typescript
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
 const client = await databaseClient.connect()
 await client.query(`LISTEN "EVENTS"`)
+
+let nextWakeTime = Date.now()
+
 client.on("notification", (msg) => {
-    if (msg.channel === "EVENTS") {}
+    if (msg.channel === "EVENTS") {
         const event = queueEventDecode(msg.payload as string)
-        if(event.eventType === "MESSAGE_CREATED") {
-            console.log(`Should wake in ${event.delayMs} ms`)
-        } else if(event.eventType === "MESSAGE_DEFERRED") {
-            console.log(`Should wake in ${event.delayMs} ms`)
+        if (event.eventType === "MESSAGE_CREATED" || event.eventType === "MESSAGE_DEFERRED") {
+            const messageAvailableAt = Date.now() + event.delayMs
+            nextWakeTime = Math.min(nextWakeTime, messageAvailableAt)
         }
     }
 })
@@ -244,28 +260,6 @@ client.on("notification", (msg) => {
 ### Waiting for Job Completion
 
 The `MESSAGE_DELETED` event can be used to create coordination patterns where one part of your application waits for an unrelated job to complete. By listening for deletion events on specific message IDs, you can implement blocking operations that wait for background work to finish.
-
-```typescript
-const client = await databaseClient.connect()
-await client.query(`LISTEN "EVENTS"`)
-
-const wait = (messageId: string) : Promise<void> => {
-    return new Promise((resolve) => {
-        const handler = (msg) => {
-            if (msg.channel === "EVENTS") {
-                const event = queueEventDecode(msg.payload as string)
-                if (event.eventType === "MESSAGE_DELETED" && event.id === messageId) {
-                    client.off("notification", handler)
-                    resolve()
-                }
-            }
-        }
-        client.on("notification", handler)
-    })
-}
-
-await wait(messageId)
-```
 
 ## Deadlocks
 

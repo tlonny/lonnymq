@@ -1,6 +1,6 @@
 # LonnyMQ
 
-A high-performance, multi-tenant PostgreSQL message queue implementation for Node.js/TypeScript.
+A high-performance, multi-tenant PostgreSQL message queue implementation for Node.js/TypeScript. Docs can be found [here](https://tlonny.github.io/lonnymq)
 
 ## Features
 
@@ -43,7 +43,7 @@ for (let ix = 0; ix < 500; ix += 1) {
 while (true) {
     const dequeueResult = await queue.dequeue({ 
         databaseClient,
-        lockMs: 30_000  // Lock messages for 30 seconds
+        lockMs: 30_000 
     })
     if (dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
         break
@@ -89,17 +89,16 @@ await queue
 
 ## Message Creation
 
-You can add a message to the queue using the `create` function. By default, messages are assigned to a random channel, ensuring fair distribution:
+You can add a message to the queue using the `create` function. By default, messages are assigned to a unique channel, resulting in basic FIFO behaviour.
 
 ```typescript
 await queue.message.create({
     databaseClient,
     content: Buffer.from("Hello, world"),
-    delayMs: 5000  // Optional: delay when message becomes available
 })
 ```
 
-If you need to assign messages to specific channels (for example, to take advantage of concurrency or rate limiting features), you can specify the channel explicitly:
+If you need to assign messages to specific channels (for example, to take advantage of fairness, concurrency or rate limiting features), you can specify the channel explicitly:
 
 ```typescript
 await queue
@@ -107,8 +106,7 @@ await queue
     .message
     .create({
         databaseClient,
-        content: Buffer.from("Hello, world"),
-        delayMs: 5000  // Optional: delay when message becomes available
+        content: Buffer.from("Hello, world")
     })
 ```
 
@@ -121,7 +119,7 @@ Messages can be fetched for processing by calling `dequeue` on the `Queue` - thi
 ```typescript
 const dequeueResult = await queue.dequeue({ 
     databaseClient,
-    lockMs: 60000  // Lock for 60 seconds
+    lockMs: 60_000
 })
 
 if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
@@ -171,7 +169,7 @@ For messages that take a long time to process, setting a large initial lock is f
 ```typescript
 const dequeueResult = await queue.dequeue({ 
     databaseClient,
-    lockMs: 30000 
+    lockMs: 30_000 
 })
 
 if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
@@ -184,15 +182,15 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
     const heartbeatInterval = setInterval(async () => {
         await message.heartbeat({ 
             databaseClient,
-            lockMs: 30000
+            lockMs: 30_000
         })
-    }, 20000)
+    }, 20_000)
     
     try {
         await longTask
         await message.delete({ databaseClient })
     } catch (error) {
-        await message.defer({ databaseClient, delayMs: 60000 })
+        await message.defer({ databaseClient, delayMs: 60_000 })
     } finally {
         clearInterval(heartbeatInterval)
     }
@@ -224,7 +222,7 @@ The simplest approach for processing messages is to call `dequeue` in a loop, ba
 ```typescript
 // Basic polling approach
 while (true) {
-    const result = await queue.dequeue({ databaseClient, lockMs: 30000 })
+    const result = await queue.dequeue({ databaseClient, lockMs: 30_000 })
     
     if (result.resultType === "MESSAGE_NOT_AVAILABLE") {
         await sleep(5_000) 

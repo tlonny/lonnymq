@@ -54,7 +54,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
         name: "alpha",
         current_size: 2,
         message_id: createResult.id,
-        active_next_at: new Date(channelState.active_prev_at.getTime() + 50),
+        dequeue_next_at: new Date(channelState.dequeue_prev_at.getTime() + 50),
 
     })
 })

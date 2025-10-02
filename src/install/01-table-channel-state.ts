@@ -21,8 +21,8 @@ export const installTableChannelState = {
                     "message_id" UUID,
                     "message_seq_no" BIGINT,
                     "message_dequeue_at" TIMESTAMP,
-                    "active_prev_at" TIMESTAMP NOT NULL,
-                    "active_next_at" TIMESTAMP NULL,
+                    "dequeue_prev_at" TIMESTAMP NOT NULL,
+                    "dequeue_next_at" TIMESTAMP NULL,
                     "created_at" TIMESTAMP NOT NULL,
                     PRIMARY KEY ("id")
                 );
@@ -34,7 +34,7 @@ export const installTableChannelState = {
             sql`
                 CREATE INDEX ${ref(dequeueIndex)}
                 ON ${ref(params.schema)}."channel_state" (
-                    "active_next_at" ASC
+                    "dequeue_next_at" ASC
                 ) WHERE "message_id" IS NOT NULL
                 AND ("max_concurrency" IS NULL OR "current_concurrency" < "max_concurrency");
             `

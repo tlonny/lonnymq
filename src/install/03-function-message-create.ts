@@ -62,7 +62,7 @@ export const installFunctionMessageCreate = {
                         "current_size",
                         "max_concurrency",
                         "release_interval_ms",
-                        "active_prev_at",
+                        "dequeue_prev_at",
                         "created_at"
                     ) VALUES (
                         p_channel_name,
@@ -80,7 +80,7 @@ export const installFunctionMessageCreate = {
                         "current_size",
                         "max_concurrency",
                         "release_interval_ms",
-                        "active_prev_at",
+                        "dequeue_prev_at",
                         "message_id",
                         "message_dequeue_at",
                         "message_seq_no"
@@ -96,8 +96,8 @@ export const installFunctionMessageCreate = {
                             "message_id" = v_message."id",
                             "message_dequeue_at" = v_message."dequeue_at",
                             "message_seq_no" = v_message."seq_no",
-                            "active_next_at" = GREATEST(
-                                v_channel_state."active_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                            "dequeue_next_at" = GREATEST(
+                                v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_message."dequeue_at"
                             )
                         WHERE "id" = v_channel_state."id";

@@ -12,14 +12,13 @@ export const installTableChannelState = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_state" (
-                    "id" UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
+                    "id" BIGSERIAL,
                     "name" TEXT NOT NULL,
                     "max_concurrency" INTEGER,
                     "release_interval_ms" INTEGER,
                     "current_size" INTEGER NOT NULL,
                     "current_concurrency" INTEGER NOT NULL,
-                    "message_id" UUID,
-                    "message_seq_no" BIGINT,
+                    "message_id" BIGINT,
                     "message_dequeue_at" TIMESTAMP,
                     "dequeue_prev_at" TIMESTAMP NOT NULL,
                     "dequeue_next_at" TIMESTAMP NULL,

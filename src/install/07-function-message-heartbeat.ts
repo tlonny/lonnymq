@@ -11,7 +11,7 @@ export const installFunctionMessageHeartbeat = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_heartbeat" (
-                    p_id UUID,
+                    p_id BIGINT,
                     p_num_attempts BIGINT,
                     p_lock_ms BIGINT
                 )

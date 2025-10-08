@@ -27,7 +27,6 @@ export const installFunctionMessageCreate = {
                     v_now := NOW();
 
                     INSERT INTO ${ref(params.schema)}."message" (
-                        "id",
                         "channel_name",
                         "content",
                         "is_locked",
@@ -35,7 +34,6 @@ export const installFunctionMessageCreate = {
                         "dequeue_at",
                         "created_at"
                     ) VALUES (
-                        GEN_RANDOM_UUID(),
                         p_channel_name,
                         p_content,
                         FALSE,
@@ -44,7 +42,6 @@ export const installFunctionMessageCreate = {
                         v_now
                     ) RETURNING
                         "id", 
-                        "seq_no",
                         "dequeue_at"
                     INTO v_message;
 
@@ -82,20 +79,18 @@ export const installFunctionMessageCreate = {
                         "release_interval_ms",
                         "dequeue_prev_at",
                         "message_id",
-                        "message_dequeue_at",
-                        "message_seq_no"
+                        "message_dequeue_at"
                     INTO v_channel_state;
 
                     IF 
                         v_channel_state."message_id" IS NULL OR
                         v_message."dequeue_at" < v_channel_state."message_dequeue_at" OR
-                        v_message."dequeue_at" = v_channel_state."message_dequeue_at" AND v_message."seq_no" < v_channel_state."message_seq_no"
+                        v_message."dequeue_at" = v_channel_state."message_dequeue_at" AND v_message."id" < v_channel_state."message_id"
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
                             "message_id" = v_message."id",
                             "message_dequeue_at" = v_message."dequeue_at",
-                            "message_seq_no" = v_message."seq_no",
                             "dequeue_next_at" = GREATEST(
                                 v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_message."dequeue_at"
@@ -112,7 +107,7 @@ export const installFunctionMessageCreate = {
                             ${value(params.eventChannel)},
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_CREATED)},
-                                'id', v_message."id",
+                                'id', v_message."id"::TEXT,
                                 'delay_ms', p_delay_ms
                             )::TEXT
                         );
@@ -121,7 +116,7 @@ export const installFunctionMessageCreate = {
                     RETURN QUERY SELECT
                         ${value(MessageCreateResultCode.MESSAGE_CREATED)},
                         JSON_BUILD_OBJECT(
-                            'id', v_message."id",
+                            'id', v_message."id"::TEXT,
                             'channel_size', v_channel_state."current_size" + 1
                         );
                 END;

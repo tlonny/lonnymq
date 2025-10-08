@@ -40,16 +40,16 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
         expect(message).toMatchObject({
-            id: result.id,
+            id: result.id.toString(),
             num_attempts: "0",
             content: Buffer.from("hello"),
             channel_name: "alpha",
         })
 
         expect(channelState).toMatchObject({
+            message_id: result.id.toString(),
             current_size: 1,
-            message_dequeue_at: message.dequeue_at,
-            message_id: result.id,
+            message_dequeue_at: message.dequeue_at
         })
 
         expect(events).toHaveLength(1)
@@ -90,8 +90,7 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
         current_size: 2,
         dequeue_next_at: firstMessage.dequeue_at,
         message_dequeue_at: secondMessage.dequeue_at,
-        message_seq_no: secondMessage.seq_no,
-        message_id: secondResult.id,
+        message_id: secondResult.id.toString(),
     })
 })
 

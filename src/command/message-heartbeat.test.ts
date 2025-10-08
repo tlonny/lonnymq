@@ -1,5 +1,5 @@
 import { MessageCreateCommand } from "@src/command/message-create"
-import { MessageDequeueCommand, type MessageDequeueCommandResultMessageDequeued } from "@src/command/message-dequeue"
+import { MessageDequeueCommand } from "@src/command/message-dequeue"
 import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import { Queue } from "@src/queue"
 import { sleep } from "bun"
@@ -32,7 +32,7 @@ test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
 
     await sleep(80)
 
-    const messageDequeue2Result = await messageDequeueCommand.execute(pool) as MessageDequeueCommandResultMessageDequeued
+    const messageDequeue2Result = await messageDequeueCommand.execute(pool) as any
     expect(messageDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
 
     await sleep(80)
@@ -57,7 +57,7 @@ test("MessageHeartbeatCommand fails on invalid numAttempts", async () => {
     }).execute(pool)
 
     const messageDequeueCommand = new MessageDequeueCommand({ schema: SCHEMA, lockMs: 50 })
-    const messageDequeueResult = await messageDequeueCommand.execute(pool) as MessageDequeueCommandResultMessageDequeued
+    const messageDequeueResult = await messageDequeueCommand.execute(pool) as any
     expect(messageDequeueResult).toMatchObject({ resultType: "MESSAGE_DEQUEUED" })
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({

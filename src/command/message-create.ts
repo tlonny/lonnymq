@@ -8,9 +8,9 @@ type QueryResult = {
     metadata: { id: string, channel_size: number }
 }
 
-export type MessageCreateCommandResult = {
+type MessageCreateCommandResult = {
     resultType: "MESSAGE_CREATED",
-    id: string,
+    id: bigint,
     channelSize: number,
 }
 
@@ -58,7 +58,7 @@ export class MessageCreateCommand {
         if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
             return {
                 resultType: "MESSAGE_CREATED",
-                id: result.metadata.id,
+                id: BigInt(result.metadata.id),
                 channelSize: result.metadata.channel_size,
             }
         } else {

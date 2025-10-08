@@ -9,9 +9,8 @@ export const installTableMessage = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."message" (
-                    "id" UUID NOT NULL,
+                    "id" BIGSERIAL NOT NULL,
                     "channel_name" TEXT NOT NULL,
-                    "seq_no" BIGSERIAL NOT NULL,
                     "content" BYTEA NOT NULL,
                     "state" BYTEA,
                     "is_locked" BOOLEAN NOT NULL,
@@ -28,7 +27,7 @@ export const installTableMessage = {
                 ON ${ref(params.schema)}."message" (
                     "channel_name",
                     "dequeue_at" ASC,
-                    "seq_no" ASC
+                    "id" ASC
                 ) WHERE NOT "is_locked";
             `,
 

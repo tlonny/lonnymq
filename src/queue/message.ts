@@ -1,6 +1,6 @@
-import { MessageDeferCommand, type MessageDeferCommandResult } from "@src/command/message-defer"
-import { MessageDeleteCommand, type MessageDeleteCommandResult } from "@src/command/message-delete"
-import { MessageHeartbeatCommand, type MessageHeartbeatCommandResult } from "@src/command/message-heartbeat"
+import { MessageDeferCommand } from "@src/command/message-defer"
+import { MessageDeleteCommand } from "@src/command/message-delete"
+import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
 export class QueueMessage<T> {
@@ -8,7 +8,7 @@ export class QueueMessage<T> {
     private readonly schema: string
     private readonly adaptor: DatabaseClientAdaptor<T>
 
-    readonly id : string
+    readonly id : bigint
     readonly isUnlocked: boolean
     readonly channelName: string
     readonly content: Buffer
@@ -18,7 +18,7 @@ export class QueueMessage<T> {
     constructor(params: {
         schema: string,
         adaptor: DatabaseClientAdaptor<T>
-        id: string,
+        id: bigint,
         channelName: string,
         isUnlocked: boolean,
         content: Buffer,
@@ -39,7 +39,7 @@ export class QueueMessage<T> {
         databaseClient: T,
         delayMs?: number,
         state?: Buffer
-    }) : Promise<MessageDeferCommandResult> {
+    }) {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageDeferCommand({
             schema: this.schema,
@@ -52,7 +52,7 @@ export class QueueMessage<T> {
 
     async delete(params: {
         databaseClient: T,
-    }) : Promise<MessageDeleteCommandResult> {
+    }) {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageDeleteCommand({
             schema: this.schema,
@@ -64,7 +64,7 @@ export class QueueMessage<T> {
     async heartbeat(params: {
         databaseClient: T,
         lockMs: number
-    }) : Promise<MessageHeartbeatCommandResult> {
+    }) {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new MessageHeartbeatCommand({
             schema: this.schema,

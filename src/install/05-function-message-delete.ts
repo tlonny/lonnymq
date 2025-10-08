@@ -11,7 +11,7 @@ export const installFunctionMessageDelete = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_delete" (
-                    p_id UUID,
+                    p_id BIGINT,
                     p_num_attempts BIGINT
                 )
                 RETURNS TABLE (
@@ -73,7 +73,7 @@ export const installFunctionMessageDelete = {
                             ${value(params.eventChannel)},
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_DELETED)},
-                                'id', p_id
+                                'id', p_id::TEXT
                             )::TEXT
                         );
                     END IF;

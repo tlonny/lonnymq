@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageDeleteResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageDeleteResultCode.MESSAGE_DELETED }
 
-export type MessageDeleteCommandResultMessageNotFound = {
+type MessageDeleteCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-export type MessageDeleteCommandResultStateInvalid = {
+type MessageDeleteCommandResultStateInvalid = {
     resultType: "STATE_INVALID"
 }
 
-export type MessageDeleteCommandResultMessageDeleted = {
+type MessageDeleteCommandResultMessageDeleted = {
     resultType: "MESSAGE_DELETED"
 }
 
-export type MessageDeleteCommandResult =
+type MessageDeleteCommandResult =
     | MessageDeleteCommandResultMessageNotFound
     | MessageDeleteCommandResultStateInvalid
     | MessageDeleteCommandResultMessageDeleted
@@ -27,13 +27,13 @@ export type MessageDeleteCommandResult =
 export class MessageDeleteCommand {
 
     readonly schema: string
-    readonly id: string
+    readonly id: bigint
     readonly numAttempts: number
 
     constructor(params: {
         schema: string,
         numAttempts: number,
-        id: string,
+        id: bigint,
     }) {
         this.schema = params.schema
         this.id = params.id
@@ -43,11 +43,11 @@ export class MessageDeleteCommand {
     async execute(databaseClient: DatabaseClient): Promise<MessageDeleteCommandResult> {
         const result = await databaseClient.query(sql`
             SELECT * FROM ${ref(this.schema)}."message_delete"(
-                $1,
+                $1::BIGINT,
                 $2::BIGINT
             )
         `.value, [
-            this.id,
+            this.id.toString(),
             this.numAttempts
         ]).then(res => res.rows[0] as QueryResult)
 

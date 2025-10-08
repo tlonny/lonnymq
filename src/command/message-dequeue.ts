@@ -25,9 +25,9 @@ type QueryResult =
     | QueryResultMessageNotAvailable
     | QueryResultMessageDequeued
 
-export type MessageDequeueCommandResultMessageDequeued = {
+type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
-    id: string,
+    id: bigint,
     channelName: string,
     isUnlocked: boolean,
     content: Buffer,
@@ -35,11 +35,11 @@ export type MessageDequeueCommandResultMessageDequeued = {
     numAttempts: number,
 }
 
-export type MessageDequeueCommandResultMessageNotAvailable = {
+type MessageDequeueCommandResultMessageNotAvailable = {
     resultType: "MESSAGE_NOT_AVAILABLE"
 }
 
-export type MessageDequeueCommandResult =
+type MessageDequeueCommandResult =
     | MessageDequeueCommandResultMessageDequeued
     | MessageDequeueCommandResultMessageNotAvailable
 
@@ -73,7 +73,7 @@ export class MessageDequeueCommand {
         } else if (result.result_code === MessageDequeueResultCode.MESSAGE_DEQUEUED) {
             return {
                 resultType: "MESSAGE_DEQUEUED",
-                id: result.metadata.id,
+                id: BigInt(result.metadata.id),
                 channelName: result.metadata.channel_name,
                 isUnlocked: result.metadata.is_unlocked,
                 content: result.content,

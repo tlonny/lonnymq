@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageHeartbeatResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageHeartbeatResultCode.MESSAGE_HEARTBEATED }
 
-export type MessageHeartbeatCommandResultMessageNotFound = {
+type MessageHeartbeatCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-export type MessageHeartbeatCommandResultStateInvalid = {
+type MessageHeartbeatCommandResultStateInvalid = {
     resultType: "MESSAGE_STATE_INVALID"
 }
 
-export type MessageHeartbeatCommandResultMessageHeartbeated = {
+type MessageHeartbeatCommandResultMessageHeartbeated = {
     resultType: "MESSAGE_HEARTBEATED"
 }
 
-export type MessageHeartbeatCommandResult =
+type MessageHeartbeatCommandResult =
     | MessageHeartbeatCommandResultMessageNotFound
     | MessageHeartbeatCommandResultStateInvalid
     | MessageHeartbeatCommandResultMessageHeartbeated
@@ -27,13 +27,13 @@ export type MessageHeartbeatCommandResult =
 export class MessageHeartbeatCommand {
 
     readonly schema: string
-    readonly id: string
+    readonly id: bigint
     readonly numAttempts: number
     readonly lockMs: number
 
     constructor(params: {
         schema: string,
-        id: string,
+        id: bigint,
         numAttempts: number,
         lockMs: number,
     }) {
@@ -46,12 +46,12 @@ export class MessageHeartbeatCommand {
     async execute(databaseClient: DatabaseClient): Promise<MessageHeartbeatCommandResult> {
         const result = await databaseClient.query(sql`
             SELECT * FROM ${ref(this.schema)}."message_heartbeat"(
-                $1,
+                $1::BIGINT,
                 $2::BIGINT,
                 $3::BIGINT
             )
         `.value, [
-            this.id,
+            this.id.toString(),
             this.numAttempts,
             this.lockMs
         ]).then(res => res.rows[0] as QueryResult)

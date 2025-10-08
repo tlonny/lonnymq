@@ -11,7 +11,7 @@ export const installFunctionMessageDefer = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
-                    p_id UUID,
+                    p_id BIGINT,
                     p_num_attempts BIGINT,
                     p_delay_ms BIGINT,
                     p_state BYTEA
@@ -31,8 +31,7 @@ export const installFunctionMessageDefer = {
                         "message"."id",
                         "message"."channel_name",
                         "message"."num_attempts",
-                        "message"."is_locked",
-                        "message"."seq_no"
+                        "message"."is_locked"
                     FROM ${ref(params.schema)}."message"
                     WHERE "id" = p_id
                     FOR UPDATE
@@ -53,8 +52,7 @@ export const installFunctionMessageDefer = {
                         "channel_state"."release_interval_ms",
                         "channel_state"."message_id",
                         "channel_state"."message_dequeue_at",
-                        "channel_state"."dequeue_prev_at",
-                        "channel_state"."message_seq_no"
+                        "channel_state"."dequeue_prev_at"
                     FROM ${ref(params.schema)}."channel_state"
                     WHERE "name" = v_message."channel_name"
                     FOR UPDATE
@@ -65,13 +63,12 @@ export const installFunctionMessageDefer = {
                     IF 
                         v_channel_state."message_id" IS NULL OR 
                         v_dequeue_at < v_channel_state."message_dequeue_at" OR
-                        v_dequeue_at = v_channel_state."message_dequeue_at" AND v_message."seq_no" < v_channel_state."message_seq_no"
+                        v_dequeue_at = v_channel_state."message_dequeue_at" AND v_message."id" < v_channel_state."message_id"
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" - 1,
                             "message_id" = v_message."id",
                             "message_dequeue_at" = v_dequeue_at,
-                            "message_seq_no" = v_message."seq_no",
                             "dequeue_next_at" = GREATEST(
                                 v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_dequeue_at
@@ -95,7 +92,7 @@ export const installFunctionMessageDefer = {
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_DEFERRED)},
                                 'delay_ms', p_delay_ms,
-                                'id', p_id
+                                'id', p_id::TEXT
                             )::TEXT
                         );
                     END IF;

@@ -11,7 +11,7 @@ export const installTableChannelPolicy = {
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_policy" (
-                    "id" UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
+                    "id" BIGSERIAL,
                     "name" TEXT NOT NULL,
                     "max_concurrency" INTEGER,
                     "release_interval_ms" INTEGER,

@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageDeferResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageDeferResultCode.MESSAGE_DEFERRED }
 
-export type MessageDeferCommandResultMessageNotFound = {
+type MessageDeferCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-export type MessageDeferCommandResultStateInvalid = {
+type MessageDeferCommandResultStateInvalid = {
     resultType: "STATE_INVALID"
 }
 
-export type MessageDeferCommandResultMessageDeferred = {
+type MessageDeferCommandResultMessageDeferred = {
     resultType: "MESSAGE_DEFERRED"
 }
 
-export type MessageDeferCommandResult =
+type MessageDeferCommandResult =
     | MessageDeferCommandResultMessageNotFound
     | MessageDeferCommandResultStateInvalid
     | MessageDeferCommandResultMessageDeferred
@@ -27,14 +27,14 @@ export type MessageDeferCommandResult =
 export class MessageDeferCommand {
 
     readonly schema: string
-    readonly id: string
+    readonly id: bigint
     readonly numAttempts: number
     readonly delayMs: number
     readonly state: Buffer | null
 
     constructor(params: {
         schema: string,
-        id: string,
+        id: bigint,
         numAttempts: number,
         delayMs?: number,
         state?: Buffer | null
@@ -53,13 +53,13 @@ export class MessageDeferCommand {
     async execute(databaseClient: DatabaseClient): Promise<MessageDeferCommandResult> {
         const result = await databaseClient.query(sql`
             SELECT * FROM ${ref(this.schema)}."message_defer"(
-                $1,
+                $1::BIGINT,
                 $2::BIGINT,
                 $3::BIGINT,
                 $4
             )
         `.value, [
-            this.id,
+            this.id.toString(),
             this.numAttempts,
             this.delayMs,
             this.state

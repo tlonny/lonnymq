@@ -14,8 +14,9 @@ import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
 import { QueueMessageModule } from "@src/queue/module/message"
 import { installFunctionMessageHeartbeat } from "@src/install/07-function-message-heartbeat"
+import { queueEventDecode } from "@src/queue/event"
 
-export type MessageDequeueResult<T> =
+type MessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE" }
     | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage<T> }
 
@@ -72,7 +73,7 @@ export class Queue<T = DatabaseClient> {
         }
     }
 
-    channel(channelName: string): QueueChannelModule<T> {
+    channel(channelName: string) {
         return new QueueChannelModule({
             adaptor: this.adaptor,
             schema: this.schema,
@@ -100,5 +101,9 @@ export class Queue<T = DatabaseClient> {
                 schema: this.schema,
                 eventChannel: params.eventChannel ?? null,
             })).map(sql => dedent(sql.value))
+    }
+
+    static decode(payload : string) {
+        return queueEventDecode(payload)
     }
 }

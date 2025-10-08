@@ -8,6 +8,8 @@ const SCHEMA = "test"
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const queue = new Queue({ schema: SCHEMA })
 
+const INDEX_SCAN_REGEX = /(Index Scan|Index Only Scan)/
+
 beforeEach(async () => {
     await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
     await pool.query(`CREATE SCHEMA "${SCHEMA}"`)
@@ -28,7 +30,7 @@ test("messageLockedDequeueQuery uses index scans", async () => {
         `
         const result = await client.query(query.value)
         expect(result.rows.length).toBeGreaterThan(0)
-        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(INDEX_SCAN_REGEX)
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")
@@ -48,7 +50,7 @@ test("channelDequeueQuery uses index scans", async () => {
         `
         const result = await client.query(query.value)
         expect(result.rows.length).toBeGreaterThan(0)
-        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(INDEX_SCAN_REGEX)
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")
@@ -68,7 +70,7 @@ test("messageNextDequeueQuery uses index scans", async () => {
         `
         const result = await client.query(query.value)
         expect(result.rows.length).toBeGreaterThan(0)
-        expect(result.rows[0]["QUERY PLAN"]).toMatch(/Index Scan/)
+        expect(result.rows[0]["QUERY PLAN"]).toMatch(INDEX_SCAN_REGEX)
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")

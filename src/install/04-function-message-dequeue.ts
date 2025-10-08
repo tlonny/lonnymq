@@ -42,12 +42,11 @@ export const messageNextDequeueQuery = (params : {
 }) => sql`
     SELECT
         "message"."id",
-        "message"."dequeue_at",
-        "message"."seq_no"
+        "message"."dequeue_at"
     FROM ${ref(params.schema)}."message"
     WHERE NOT "is_locked"
     AND "channel_name" = ${params.channelName}
-    ORDER BY "dequeue_at" ASC, "seq_no" ASC
+    ORDER BY "dequeue_at" ASC, "id" ASC
 `
 
 export const installFunctionMessageDequeue = {
@@ -160,7 +159,6 @@ export const installFunctionMessageDequeue = {
                             "current_concurrency" = v_channel_state."current_concurrency" + 1,
                             "message_id" = v_message_next."id",
                             "message_dequeue_at" = v_message_next."dequeue_at",
-                            "message_seq_no" = v_message_next."seq_no",
                             "dequeue_prev_at" = v_now,
                             "dequeue_next_at" = GREATEST(
                                 v_message_next."dequeue_at",
@@ -174,7 +172,7 @@ export const installFunctionMessageDequeue = {
                         v_message_dequeue."content",
                         v_message_dequeue."state",
                         JSON_BUILD_OBJECT(
-                            'id', v_message_dequeue."id",
+                            'id', v_message_dequeue."id"::TEXT,
                             'is_unlocked', FALSE,
                             'channel_name', v_message_dequeue."channel_name",
                             'num_attempts', v_message_dequeue."num_attempts" + 1

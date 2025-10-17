@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageDeleteResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageDeleteResultCode.MESSAGE_DELETED }
 
-type MessageDeleteCommandResultMessageNotFound = {
+export type MessageDeleteCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-type MessageDeleteCommandResultStateInvalid = {
+export type MessageDeleteCommandResultStateInvalid = {
     resultType: "STATE_INVALID"
 }
 
-type MessageDeleteCommandResultMessageDeleted = {
+export type MessageDeleteCommandResultMessageDeleted = {
     resultType: "MESSAGE_DELETED"
 }
 
-type MessageDeleteCommandResult =
+export type MessageDeleteCommandResult =
     | MessageDeleteCommandResultMessageNotFound
     | MessageDeleteCommandResultStateInvalid
     | MessageDeleteCommandResultMessageDeleted

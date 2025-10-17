@@ -7,7 +7,7 @@ type QueryResult = {
     metadata: { id: string, channel_size: number }
 }
 
-type MessageCreateCommandResult = {
+export type MessageCreateCommandResult = {
     resultType: "MESSAGE_CREATED",
     id: bigint,
     channelSize: number,

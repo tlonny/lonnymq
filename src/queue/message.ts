@@ -3,7 +3,7 @@ import { MessageDeleteCommand } from "@src/command/message-delete"
 import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
-type ScheduleParams =
+export type QueueMessageScheduleParams =
     | { scheduleType: "OFFSET", offsetMs: number }
     | { scheduleType: "TIMESTAMP", timestamp: number }
 
@@ -42,7 +42,7 @@ export class QueueMessage<T> {
     async defer(params: {
         databaseClient: T,
         state? : Buffer,
-        schedule?: ScheduleParams
+        schedule?: QueueMessageScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
 

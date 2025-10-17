@@ -17,11 +17,11 @@ import { installFunctionMessageHeartbeat } from "@src/install/function-message-h
 import { queueEventDecode } from "@src/queue/event"
 import { installFunctionEpoch } from "@src/install/function-epoch"
 
-type MessageDequeueResult<T> =
+export type QueueMessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE" }
     | { resultType: "MESSAGE_DEQUEUED", message: QueueMessage<T> }
 
-type QueueParams<T> = T extends DatabaseClient
+export type QueueParams<T> = T extends DatabaseClient
     ? { schema: string, adaptor?: DatabaseClientAdaptor<T> }
     : { schema: string, adaptor: DatabaseClientAdaptor<T> }
 
@@ -46,7 +46,7 @@ export class Queue<T = DatabaseClient> {
     async dequeue(params: {
         databaseClient: T
         lockMs: number
-    }): Promise<MessageDequeueResult<T>> {
+    }): Promise<QueueMessageDequeueResult<T>> {
         const command = new MessageDequeueCommand({
             schema: this.schema,
             lockMs: params.lockMs,

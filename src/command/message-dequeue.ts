@@ -25,7 +25,7 @@ type QueryResult =
     | QueryResultMessageNotAvailable
     | QueryResultMessageDequeued
 
-type MessageDequeueCommandResultMessageDequeued = {
+export type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
     id: bigint,
     channelName: string,
@@ -35,11 +35,11 @@ type MessageDequeueCommandResultMessageDequeued = {
     numAttempts: number,
 }
 
-type MessageDequeueCommandResultMessageNotAvailable = {
+export type MessageDequeueCommandResultMessageNotAvailable = {
     resultType: "MESSAGE_NOT_AVAILABLE"
 }
 
-type MessageDequeueCommandResult =
+export type MessageDequeueCommandResult =
     | MessageDequeueCommandResultMessageDequeued
     | MessageDequeueCommandResultMessageNotAvailable
 

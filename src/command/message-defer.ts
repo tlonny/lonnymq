@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageDeferResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageDeferResultCode.MESSAGE_DEFERRED }
 
-type MessageDeferCommandResultMessageNotFound = {
+export type MessageDeferCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-type MessageDeferCommandResultStateInvalid = {
+export type MessageDeferCommandResultStateInvalid = {
     resultType: "STATE_INVALID"
 }
 
-type MessageDeferCommandResultMessageDeferred = {
+export type MessageDeferCommandResultMessageDeferred = {
     resultType: "MESSAGE_DEFERRED"
 }
 
-type MessageDeferCommandResult =
+export type MessageDeferCommandResult =
     | MessageDeferCommandResultMessageNotFound
     | MessageDeferCommandResultStateInvalid
     | MessageDeferCommandResultMessageDeferred

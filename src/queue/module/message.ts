@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 import { MessageCreateCommand } from "@src/command/message-create"
 
-type ScheduleParams =
+export type QueueMessageModuleScheduleParams =
     | { scheduleType: "OFFSET", offsetMs: number }
     | { scheduleType: "TIMESTAMP", timestamp: number }
 
@@ -22,7 +22,7 @@ export class QueueMessageModule<T> {
     async create(params : {
         databaseClient: T,
         content: Buffer,
-        schedule?: ScheduleParams
+        schedule?: QueueMessageModuleScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
 

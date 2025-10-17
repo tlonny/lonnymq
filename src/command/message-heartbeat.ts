@@ -7,19 +7,19 @@ type QueryResult =
     | { result_code: MessageHeartbeatResultCode.MESSAGE_STATE_INVALID }
     | { result_code: MessageHeartbeatResultCode.MESSAGE_HEARTBEATED }
 
-type MessageHeartbeatCommandResultMessageNotFound = {
+export type MessageHeartbeatCommandResultMessageNotFound = {
     resultType: "MESSAGE_NOT_FOUND"
 }
 
-type MessageHeartbeatCommandResultStateInvalid = {
+export type MessageHeartbeatCommandResultStateInvalid = {
     resultType: "MESSAGE_STATE_INVALID"
 }
 
-type MessageHeartbeatCommandResultMessageHeartbeated = {
+export type MessageHeartbeatCommandResultMessageHeartbeated = {
     resultType: "MESSAGE_HEARTBEATED"
 }
 
-type MessageHeartbeatCommandResult =
+export type MessageHeartbeatCommandResult =
     | MessageHeartbeatCommandResultMessageNotFound
     | MessageHeartbeatCommandResultStateInvalid
     | MessageHeartbeatCommandResultMessageHeartbeated

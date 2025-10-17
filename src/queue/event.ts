@@ -22,24 +22,24 @@ type QueueEventPayload =
     | QueueEventPayloadMessageDelete
     | QueueEventPayloadMessageDefer
 
-type QueueEventMessageCreate = {
+export type QueueEventMessageCreate = {
     eventType: "MESSAGE_CREATED",
     id: string,
     offsetMs: number
 }
 
-type QueueEventMessageDeleted = {
+export type QueueEventMessageDeleted = {
     eventType: "MESSAGE_DELETED",
     id: string,
 }
 
-type QueueEventMessageDeferred = {
+export type QueueEventMessageDeferred = {
     eventType: "MESSAGE_DEFERRED",
     id: string,
     offsetMs: number
 }
 
-type QueueEvent =
+export type QueueEvent =
     | QueueEventMessageCreate
     | QueueEventMessageDeleted
     | QueueEventMessageDeferred

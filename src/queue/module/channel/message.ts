@@ -1,7 +1,7 @@
 import type { DatabaseClientAdaptor } from "@src/core/database"
 import { MessageCreateCommand } from "@src/command/message-create"
 
-type ScheduleParams =
+export type QueueChannelMessageModuleScheduleParams =
     | { scheduleType: "OFFSET", offsetMs: number }
     | { scheduleType: "TIMESTAMP", timestamp: number }
 
@@ -24,7 +24,7 @@ export class QueueChannelMessageModule<T> {
     async create(params : {
         databaseClient: T,
         content: Buffer,
-        schedule?: ScheduleParams
+        schedule?: QueueChannelMessageModuleScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
 

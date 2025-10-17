@@ -1,6 +1,10 @@
 import type { DatabaseClientAdaptor } from "@src/core/database"
 import { MessageCreateCommand } from "@src/command/message-create"
 
+type ScheduleParams =
+    | { scheduleType: "OFFSET", offsetMs: number }
+    | { scheduleType: "TIMESTAMP", timestamp: number }
+
 export class QueueChannelMessageModule<T> {
 
     private readonly schema: string
@@ -20,14 +24,24 @@ export class QueueChannelMessageModule<T> {
     async create(params : {
         databaseClient: T,
         content: Buffer,
-        delayMs?: number,
+        schedule?: ScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
+
+        const offsetMs = params.schedule && params.schedule.scheduleType === "OFFSET"
+            ? params.schedule.offsetMs
+            : null
+
+        const timestamp = params.schedule && params.schedule.scheduleType === "TIMESTAMP"
+            ? params.schedule.timestamp
+            : null
+
         const command = new MessageCreateCommand({
             schema: this.schema,
             channelName: this.channelName,
             content: params.content,
-            delayMs: params.delayMs,
+            offsetMs: offsetMs,
+            timestamp: timestamp,
         })
 
         const result = await command.execute(adaptedClient)

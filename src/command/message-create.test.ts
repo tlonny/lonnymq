@@ -1,4 +1,5 @@
 import { MessageCreateCommand } from "@src/command/message-create"
+import { ref, sql } from "@src/core/sql"
 import { Queue } from "@src/queue"
 import { queueEventDecode } from "@src/queue/event"
 import { beforeEach, expect, test } from "bun:test"
@@ -22,7 +23,8 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         schema: SCHEMA,
         channelName: "alpha",
         content: Buffer.from("hello"),
-        delayMs: 10,
+        timestamp: null,
+        offsetMs: 10,
     })
 
     const client = await pool.connect()
@@ -55,7 +57,7 @@ test("MessageCreateCommand persists a message in the DB", async () => {
         expect(events).toHaveLength(1)
         expect(events[0]).toMatchObject({
             eventType: "MESSAGE_CREATED",
-            delayMs: 10,
+            offsetMs: 10,
         })
 
     } finally {
@@ -67,14 +69,16 @@ test("MessageCreateCommand correctly updates channelState when preempting a \"lo
     const firstCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
-        delayMs: 0,
+        timestamp: null,
+        offsetMs: 0,
         content: Buffer.from("hello"),
     })
 
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
-        delayMs: -50,
+        timestamp: null,
+        offsetMs: -50,
         content: Buffer.from("hello"),
     })
 
@@ -98,8 +102,9 @@ test("MessageCreateCommand correctly returns the channel size", async () => {
     const command = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        timestamp: null,
         content: Buffer.from("hello"),
-        delayMs: 10,
+        offsetMs: 10,
     })
 
     const firstResult = await command.execute(pool)
@@ -119,4 +124,57 @@ test("MessageCreateCommand correctly returns the channel size", async () => {
         resultType: "MESSAGE_CREATED",
         channelSize: 3
     })
+})
+
+test("MessageCreateCommand persists supplied dequeueAt", async () => {
+    const dequeueAt = Date.now() + 5_321
+
+    const command = new MessageCreateCommand({
+        schema: SCHEMA,
+        channelName: "alpha",
+        content: Buffer.from("hello"),
+        timestamp: dequeueAt,
+        offsetMs: null,
+    })
+
+    const result = await command.execute(pool)
+    const message = await pool
+        .query("SELECT dequeue_at FROM test.message WHERE id = $1", [result.id])
+        .then(res => res.rows[0])
+
+    expect(Number(message.dequeue_at)).toBe(dequeueAt)
+})
+
+test("MessageCreateCommand sets dequeue_at = DB NOW() + offsetMs", async () => {
+    const offsetMs = 1_234
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const dbNow = await client
+            .query(sql`SELECT ${ref(SCHEMA)}."epoch"() AS now`.value)
+            .then(res => Number(res.rows[0].now))
+
+        const command = new MessageCreateCommand({
+            schema: SCHEMA,
+            channelName: "alpha",
+            content: Buffer.from("hello"),
+            offsetMs,
+            timestamp: null,
+        })
+
+        const result = await command.execute(client)
+        const message = await client
+            .query("SELECT dequeue_at FROM test.message WHERE id = $1", [result.id])
+            .then(res => res.rows[0])
+
+        expect(Number(message.dequeue_at)).toBe(dbNow + offsetMs)
+        await client.query("ROLLBACK")
+    } catch (e) {
+        await client.query("ROLLBACK")
+        throw e
+    } finally {
+        client.release()
+    }
 })

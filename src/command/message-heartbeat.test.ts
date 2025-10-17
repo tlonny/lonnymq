@@ -22,6 +22,8 @@ test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
     await new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        offsetMs: null,
+        timestamp: null,
         content: Buffer.from("hello")
     }).execute(pool)
 
@@ -53,6 +55,8 @@ test("MessageHeartbeatCommand fails on invalid numAttempts", async () => {
     await new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        offsetMs: null,
+        timestamp: null,
         content: Buffer.from("hello")
     }).execute(pool)
 
@@ -74,6 +78,8 @@ test("MessageHeartbeatCommand fails when not locked", async () => {
     const messageCreateCommand = new MessageCreateCommand({
         schema: SCHEMA,
         channelName: "alpha",
+        offsetMs: null,
+        timestamp: null,
         content: Buffer.from("hello")
     })
     const result = await messageCreateCommand.execute(pool)

@@ -13,19 +13,20 @@ export const installFunctionMessageDefer = {
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
                     p_id BIGINT,
                     p_num_attempts BIGINT,
-                    p_delay_ms BIGINT,
+                    p_timestamp BIGINT,
+                    p_offset_ms BIGINT,
                     p_state BYTEA
                 )
                 RETURNS TABLE (
                     result_code INTEGER
                 ) AS $$
                 DECLARE
-                    v_now TIMESTAMP;
+                    v_now BIGINT;
                     v_channel_state RECORD;
                     v_message RECORD;
-                    v_dequeue_at TIMESTAMP;
+                    v_dequeue_at BIGINT;
                 BEGIN
-                    v_now := NOW();
+                    v_now := ${ref(params.schema)}."epoch"();
 
                     SELECT
                         "message"."id",
@@ -58,7 +59,10 @@ export const installFunctionMessageDefer = {
                     FOR UPDATE
                     INTO v_channel_state;
 
-                    v_dequeue_at := v_now + INTERVAL '1 MILLISECOND' * p_delay_ms;
+                    v_dequeue_at := COALESCE(
+                        p_timestamp,
+                        v_now + COALESCE(p_offset_ms, 0)
+                    );
 
                     IF 
                         v_channel_state."message_id" IS NULL OR 
@@ -70,7 +74,7 @@ export const installFunctionMessageDefer = {
                             "message_id" = v_message."id",
                             "message_dequeue_at" = v_dequeue_at,
                             "dequeue_next_at" = GREATEST(
-                                v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
+                                v_channel_state."dequeue_prev_at" + COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_dequeue_at
                             )
                         WHERE "name" = v_message."channel_name";
@@ -91,7 +95,7 @@ export const installFunctionMessageDefer = {
                             ${value(params.eventChannel)},
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_DEFERRED)},
-                                'delay_ms', p_delay_ms,
+                                'offset_ms', p_offset_ms,
                                 'id', p_id::TEXT
                             )::TEXT
                         );

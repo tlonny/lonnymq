@@ -19,12 +19,12 @@ export const installFunctionMessageHeartbeat = {
                     result_code INTEGER
                 ) AS $$
                 DECLARE
-                    v_now TIMESTAMP;
+                    v_now BIGINT;
                     v_channel_state RECORD;
                     v_message RECORD;
-                    v_dequeue_at TIMESTAMP;
+                    v_dequeue_at BIGINT;
                 BEGIN
-                    v_now := NOW();
+                    v_now := ${ref(params.schema)}."epoch"();
 
                     SELECT
                         "message"."id",
@@ -49,7 +49,7 @@ export const installFunctionMessageHeartbeat = {
 
                     UPDATE ${ref(params.schema)}."message" SET
                         "unlock_at" = GREATEST(
-                            v_now + (p_lock_ms * INTERVAL '1 millisecond'),
+                            v_now + p_lock_ms,
                             v_message."unlock_at"
                         )
                     WHERE "id" = p_id;

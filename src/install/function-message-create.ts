@@ -13,36 +13,40 @@ export const installFunctionMessageCreate = {
                 CREATE FUNCTION ${ref(params.schema)}."message_create" (
                     p_channel_name TEXT,
                     p_content BYTEA,
-                    p_delay_ms BIGINT
+                    p_timestamp BIGINT,
+                    p_offset_ms BIGINT
                 ) RETURNS TABLE (
                     result_code INTEGER,
                     metadata JSON
                 ) AS $$
                 DECLARE
-                    v_now TIMESTAMP;
+                    v_now BIGINT;
+                    v_dequeue_at BIGINT;
                     v_channel_policy RECORD;
                     v_channel_state RECORD;
                     v_message RECORD;
                 BEGIN
-                    v_now := NOW();
+                    v_now := ${ref(params.schema)}."epoch"();
+
+                    v_dequeue_at := COALESCE(
+                        p_timestamp, 
+                        v_now + COALESCE(p_offset_ms, 0)
+                    );
 
                     INSERT INTO ${ref(params.schema)}."message" (
                         "channel_name",
                         "content",
                         "is_locked",
                         "num_attempts",
-                        "dequeue_at",
-                        "created_at"
+                        "dequeue_at"
                     ) VALUES (
                         p_channel_name,
                         p_content,
                         FALSE,
                         0,
-                        v_now + INTERVAL '1 MILLISECOND' * p_delay_ms,
-                        v_now
+                        v_dequeue_at
                     ) RETURNING
-                        "id", 
-                        "dequeue_at"
+                        "id"
                     INTO v_message;
 
                     SELECT
@@ -59,15 +63,13 @@ export const installFunctionMessageCreate = {
                         "current_size",
                         "max_concurrency",
                         "release_interval_ms",
-                        "dequeue_prev_at",
-                        "created_at"
+                        "dequeue_prev_at"
                     ) VALUES (
                         p_channel_name,
                         0,
                         0,
                         v_channel_policy."max_concurrency",
                         v_channel_policy."release_interval_ms",
-                        v_now,
                         v_now
                     ) ON CONFLICT ("name") 
                     DO UPDATE SET "name" = EXCLUDED."name"
@@ -84,16 +86,16 @@ export const installFunctionMessageCreate = {
 
                     IF 
                         v_channel_state."message_id" IS NULL OR
-                        v_message."dequeue_at" < v_channel_state."message_dequeue_at" OR
-                        v_message."dequeue_at" = v_channel_state."message_dequeue_at" AND v_message."id" < v_channel_state."message_id"
+                        v_dequeue_at < v_channel_state."message_dequeue_at" OR
+                        v_dequeue_at = v_channel_state."message_dequeue_at" AND v_message."id" < v_channel_state."message_id"
                     THEN
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_size" = v_channel_state."current_size" + 1,
                             "message_id" = v_message."id",
-                            "message_dequeue_at" = v_message."dequeue_at",
+                            "message_dequeue_at" = v_dequeue_at,
                             "dequeue_next_at" = GREATEST(
-                                v_channel_state."dequeue_prev_at" + INTERVAL '1 MILLISECOND' * COALESCE(v_channel_state."release_interval_ms", 0),
-                                v_message."dequeue_at"
+                                v_channel_state."dequeue_prev_at" + COALESCE(v_channel_state."release_interval_ms", 0),
+                                v_dequeue_at
                             )
                         WHERE "id" = v_channel_state."id";
                     ELSE
@@ -108,7 +110,7 @@ export const installFunctionMessageCreate = {
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_CREATED)},
                                 'id', v_message."id"::TEXT,
-                                'delay_ms', p_delay_ms
+                                'offset_ms', p_offset_ms
                             )::TEXT
                         );
                     END IF;

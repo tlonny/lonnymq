@@ -3,6 +3,10 @@ import { MessageDeleteCommand } from "@src/command/message-delete"
 import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
+type ScheduleParams =
+    | { scheduleType: "OFFSET", offsetMs: number }
+    | { scheduleType: "TIMESTAMP", timestamp: number }
+
 export class QueueMessage<T> {
 
     private readonly schema: string
@@ -37,16 +41,26 @@ export class QueueMessage<T> {
 
     async defer(params: {
         databaseClient: T,
-        delayMs?: number,
-        state?: Buffer
+        state? : Buffer,
+        schedule?: ScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
+
+        const offsetMs = params.schedule && params.schedule.scheduleType === "OFFSET"
+            ? params.schedule.offsetMs
+            : null
+
+        const timestamp = params.schedule && params.schedule.scheduleType === "TIMESTAMP"
+            ? params.schedule.timestamp
+            : null
+
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,
-            delayMs: params.delayMs,
-            state: params.state,
+            offsetMs: offsetMs,
+            timestamp: timestamp,
+            state: params.state ?? null,
         }).execute(adaptedClient)
     }
 

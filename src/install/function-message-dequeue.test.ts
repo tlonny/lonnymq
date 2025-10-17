@@ -1,5 +1,5 @@
 import { sql, value } from "@src/core/sql"
-import { channelDequeueQuery, messageLockedDequeueQuery, messageNextDequeueQuery } from "@src/install/04-function-message-dequeue"
+import { channelDequeueQuery, messageLockedDequeueQuery, messageNextDequeueQuery } from "@src/install/function-message-dequeue"
 import { Queue } from "@src/queue"
 import { beforeEach, test, expect } from "bun:test"
 import { Pool } from "pg"
@@ -26,7 +26,7 @@ test("messageLockedDequeueQuery uses index scans", async () => {
         await client.query("SET LOCAL enable_bitmapscan = OFF")
         const query = sql`
             EXPLAIN (COSTS OFF)
-            ${messageLockedDequeueQuery({ now: sql`NOW()`, schema: SCHEMA })}
+            ${messageLockedDequeueQuery({ now: sql`0`, schema: SCHEMA })}
         `
         const result = await client.query(query.value)
         expect(result.rows.length).toBeGreaterThan(0)

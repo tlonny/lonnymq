@@ -13,21 +13,15 @@ export const installFunctionChannelPolicySet = {
                     p_max_concurrency INTEGER,
                     p_release_interval_ms INTEGER
                 ) RETURNS VOID AS $$
-                DECLARE
-                    v_now TIMESTAMP;
                 BEGIN
-                    v_now := NOW();
-
                     INSERT INTO ${ref(params.schema)}."channel_policy" (
                         "name",
                         "max_concurrency",
-                        "release_interval_ms",
-                        "created_at"
+                        "release_interval_ms"
                     ) VALUES (
                         p_name,
                         p_max_concurrency,
-                        p_release_interval_ms,
-                        v_now
+                        p_release_interval_ms
                     ) ON CONFLICT ("name") DO UPDATE SET
                         "max_concurrency" = EXCLUDED."max_concurrency",
                         "release_interval_ms" = EXCLUDED."release_interval_ms";

@@ -1,5 +1,10 @@
+import { randomUUID } from "crypto"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 import { MessageCreateCommand } from "@src/command/message-create"
+
+type ScheduleParams =
+    | { scheduleType: "OFFSET", offsetMs: number }
+    | { scheduleType: "TIMESTAMP", timestamp: number }
 
 export class QueueMessageModule<T> {
 
@@ -17,14 +22,24 @@ export class QueueMessageModule<T> {
     async create(params : {
         databaseClient: T,
         content: Buffer,
-        delayMs?: number,
+        schedule?: ScheduleParams
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
+
+        const offsetMs = params.schedule && params.schedule.scheduleType === "OFFSET"
+            ? params.schedule.offsetMs
+            : null
+
+        const timestamp = params.schedule && params.schedule.scheduleType === "TIMESTAMP"
+            ? params.schedule.timestamp
+            : null
 
         const command = new MessageCreateCommand({
             schema: this.schema,
             content: params.content,
-            delayMs: params.delayMs,
+            offsetMs: offsetMs,
+            timestamp: timestamp,
+            channelName: randomUUID(),
         })
 
         const result = await command.execute(adaptedClient)

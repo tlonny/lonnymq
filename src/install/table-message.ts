@@ -15,9 +15,8 @@ export const installTableMessage = {
                     "state" BYTEA,
                     "is_locked" BOOLEAN NOT NULL,
                     "num_attempts" BIGINT NOT NULL,
-                    "dequeue_at" TIMESTAMP NOT NULL,
-                    "unlock_at" TIMESTAMP,
-                    "created_at" TIMESTAMP NOT NULL,
+                    "dequeue_at" BIGINT NOT NULL,
+                    "unlock_at" BIGINT,
                     PRIMARY KEY ("id")
                 );
             `,

@@ -1,6 +1,5 @@
-import { DELAY_MS_DEFAULT, MessageCreateResultCode } from "@src/core/constant"
+import { MessageCreateResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
-import { randomSlug } from "@src/core/random"
 import { ref, sql } from "@src/core/sql"
 
 type QueryResult = {
@@ -19,24 +18,21 @@ export class MessageCreateCommand {
     readonly schema: string
     readonly channelName: string
     readonly content: Buffer
-    readonly delayMs: number
-    readonly createdAt: Date
+    readonly offsetMs: number | null
+    readonly timestamp: number | null
 
     constructor(params: {
         schema: string,
-        channelName?: string,
+        channelName: string,
         content: Buffer,
-        delayMs?: number,
+        offsetMs: number | null,
+        timestamp: number | null
     }) {
-        const delayMs = params.delayMs === undefined
-            ? DELAY_MS_DEFAULT
-            : params.delayMs
-
         this.schema = params.schema
-        this.channelName = params.channelName ?? randomSlug()
+        this.channelName = params.channelName
         this.content = params.content
-        this.delayMs = delayMs
-        this.createdAt = new Date()
+        this.offsetMs = params.offsetMs
+        this.timestamp = params.timestamp
     }
 
     async execute(databaseClient: DatabaseClient): Promise<MessageCreateCommandResult> {
@@ -47,12 +43,14 @@ export class MessageCreateCommand {
             FROM ${ref(this.schema)}."message_create"(
                 $1, 
                 $2,
-                $3::BIGINT
+                $3::BIGINT,
+                $4::BIGINT
             )
         `.value, [
             this.channelName,
             this.content,
-            this.delayMs
+            this.timestamp,
+            this.offsetMs
         ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {

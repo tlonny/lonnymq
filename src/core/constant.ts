@@ -1,5 +1,3 @@
-import { fromSecs } from "@src/core/ms"
-
 export enum MessageCreateResultCode {
     MESSAGE_CREATED
 }
@@ -32,5 +30,3 @@ export enum MessageEventType {
     MESSAGE_DELETED,
     MESSAGE_DEFERRED,
 }
-
-export const DELAY_MS_DEFAULT = fromSecs(0)

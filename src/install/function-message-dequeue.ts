@@ -80,13 +80,13 @@ export const installFunctionMessageDequeue = {
                     metadata JSON
                 ) AS $$
                 DECLARE
-                    v_now TIMESTAMP;
+                    v_now BIGINT;
                     v_channel_state RECORD;
                     v_message_locked RECORD;
                     v_message_dequeue RECORD;
                     v_message_next RECORD;
                 BEGIN
-                    v_now := NOW();
+                    v_now := ${ref(params.schema)}."epoch"();
 
                     ${messageLockedDequeue}
                     FOR UPDATE
@@ -97,7 +97,7 @@ export const installFunctionMessageDequeue = {
                     IF v_message_locked."id" IS NOT NULL THEN
                         UPDATE ${ref(params.schema)}."message" SET
                             "num_attempts" = v_message_locked."num_attempts" + 1,
-                            "unlock_at" = v_now + (p_lock_ms * INTERVAL '1 millisecond')
+                            "unlock_at" = v_now + p_lock_ms 
                         WHERE "id" = v_message_locked."id";
 
                         RETURN QUERY SELECT 
@@ -105,10 +105,10 @@ export const installFunctionMessageDequeue = {
                             v_message_locked.content,
                             v_message_locked.state,
                             JSON_BUILD_OBJECT(
-                                'id', v_message_locked.id,
+                                'id', v_message_locked."id",
                                 'is_unlocked', TRUE,
-                                'channel_name', v_message_locked.channel_name,
-                                'num_attempts', v_message_locked.num_attempts + 1
+                                'channel_name', v_message_locked."channel_name",
+                                'num_attempts', v_message_locked."num_attempts" + 1
                             );
                         RETURN;
                     END IF;
@@ -141,7 +141,7 @@ export const installFunctionMessageDequeue = {
                     UPDATE ${ref(params.schema)}."message" SET
                         "is_locked" = TRUE,
                         "num_attempts" = v_message_dequeue."num_attempts" + 1,
-                        "unlock_at" = v_now + (p_lock_ms * INTERVAL '1 millisecond')
+                        "unlock_at" = v_now + p_lock_ms
                     WHERE "id" = v_message_dequeue."id";
 
                     ${messageNextDequeue}
@@ -162,7 +162,7 @@ export const installFunctionMessageDequeue = {
                             "dequeue_prev_at" = v_now,
                             "dequeue_next_at" = GREATEST(
                                 v_message_next."dequeue_at",
-                                v_now + (COALESCE(v_channel_state."release_interval_ms", 0) * INTERVAL '1 millisecond')
+                                v_now + COALESCE(v_channel_state."release_interval_ms", 0)
                             )
                         WHERE "id" = v_channel_state."id";
                     END IF;

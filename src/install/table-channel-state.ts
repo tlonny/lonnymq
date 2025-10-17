@@ -19,10 +19,9 @@ export const installTableChannelState = {
                     "current_size" INTEGER NOT NULL,
                     "current_concurrency" INTEGER NOT NULL,
                     "message_id" BIGINT,
-                    "message_dequeue_at" TIMESTAMP,
-                    "dequeue_prev_at" TIMESTAMP NOT NULL,
-                    "dequeue_next_at" TIMESTAMP NULL,
-                    "created_at" TIMESTAMP NOT NULL,
+                    "message_dequeue_at" BIGINT,
+                    "dequeue_prev_at" BIGINT NOT NULL,
+                    "dequeue_next_at" BIGINT NULL,
                     PRIMARY KEY ("id")
                 );
             `,

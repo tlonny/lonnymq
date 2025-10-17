@@ -3,7 +3,7 @@ import { MessageEventType } from "@src/core/constant"
 type QueueEventPayloadMessageCreate = {
     type: MessageEventType.MESSAGE_CREATED
     id: string,
-    delay_ms: number
+    offset_ms: number
 }
 
 type QueueEventPayloadMessageDelete = {
@@ -14,7 +14,7 @@ type QueueEventPayloadMessageDelete = {
 type QueueEventPayloadMessageDefer = {
     type: MessageEventType.MESSAGE_DEFERRED,
     id: string,
-    delay_ms: number
+    offset_ms: number
 }
 
 type QueueEventPayload =
@@ -25,7 +25,7 @@ type QueueEventPayload =
 type QueueEventMessageCreate = {
     eventType: "MESSAGE_CREATED",
     id: string,
-    delayMs: number
+    offsetMs: number
 }
 
 type QueueEventMessageDeleted = {
@@ -36,7 +36,7 @@ type QueueEventMessageDeleted = {
 type QueueEventMessageDeferred = {
     eventType: "MESSAGE_DEFERRED",
     id: string,
-    delayMs: number
+    offsetMs: number
 }
 
 type QueueEvent =
@@ -50,7 +50,7 @@ export const queueEventDecode = (payload : string) : QueueEvent => {
         return {
             eventType: "MESSAGE_CREATED",
             id: parsed.id,
-            delayMs: parsed.delay_ms,
+            offsetMs: parsed.offset_ms,
         }
     } else if (parsed.type === MessageEventType.MESSAGE_DELETED) {
         return {
@@ -61,7 +61,7 @@ export const queueEventDecode = (payload : string) : QueueEvent => {
         return {
             eventType: "MESSAGE_DEFERRED",
             id: parsed.id,
-            delayMs: parsed.delay_ms,
+            offsetMs: parsed.offset_ms,
         }
     } else {
         parsed satisfies never

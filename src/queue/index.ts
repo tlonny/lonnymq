@@ -1,20 +1,21 @@
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
 import type { DatabaseClient, DatabaseClientAdaptor } from "@src/core/database"
 import { dedent } from "@src/core/dedent"
-import { installTableChannelPolicy } from "@src/install/00-table-channel-policy"
-import { installTableChannelState } from "@src/install/01-table-channel-state"
-import { installTableMessage } from "@src/install/02-table-message"
-import { installFunctionMessageCreate } from "@src/install/03-function-message-create"
-import { installFunctionMessageDequeue } from "@src/install/04-function-message-dequeue"
-import { installFunctionMessageDelete } from "@src/install/05-function-message-delete"
-import { installFunctionMessageDefer } from "@src/install/06-function-message-defer"
-import { installFunctionChannelPolicyClear } from "@src/install/08-function-channel-policy-clear"
-import { installFunctionChannelPolicySet } from "@src/install/09-function-channel-policy-set"
+import { installTableChannelPolicy } from "@src/install/table-channel-policy"
+import { installTableChannelState } from "@src/install/table-channel-state"
+import { installTableMessage } from "@src/install/table-message"
+import { installFunctionMessageCreate } from "@src/install/function-message-create"
+import { installFunctionMessageDequeue } from "@src/install/function-message-dequeue"
+import { installFunctionMessageDelete } from "@src/install/function-message-delete"
+import { installFunctionMessageDefer } from "@src/install/function-message-defer"
+import { installFunctionChannelPolicyClear } from "@src/install/function-channel-policy-clear"
+import { installFunctionChannelPolicySet } from "@src/install/function-channel-policy-set"
 import { QueueChannelModule } from "@src/queue/module/channel"
 import { QueueMessage } from "@src/queue/message"
 import { QueueMessageModule } from "@src/queue/module/message"
-import { installFunctionMessageHeartbeat } from "@src/install/07-function-message-heartbeat"
+import { installFunctionMessageHeartbeat } from "@src/install/function-message-heartbeat"
 import { queueEventDecode } from "@src/queue/event"
+import { installFunctionEpoch } from "@src/install/function-epoch"
 
 type MessageDequeueResult<T> =
     | { resultType: "MESSAGE_NOT_AVAILABLE" }
@@ -88,13 +89,14 @@ export class Queue<T = DatabaseClient> {
             installTableChannelPolicy,
             installTableChannelState,
             installTableMessage,
+            installFunctionEpoch,
+            installFunctionChannelPolicySet,
+            installFunctionChannelPolicyClear,
             installFunctionMessageCreate,
             installFunctionMessageDequeue,
             installFunctionMessageDelete,
             installFunctionMessageDefer,
             installFunctionMessageHeartbeat,
-            installFunctionChannelPolicySet,
-            installFunctionChannelPolicyClear,
         ]
             .sort((a, b) => a.name.localeCompare(b.name))
             .flatMap(install => install.sql({

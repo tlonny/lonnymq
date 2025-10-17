@@ -1,4 +1,4 @@
-import { DELAY_MS_DEFAULT, MessageDeferResultCode } from "@src/core/constant"
+import { MessageDeferResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
 
@@ -29,25 +29,24 @@ export class MessageDeferCommand {
     readonly schema: string
     readonly id: bigint
     readonly numAttempts: number
-    readonly delayMs: number
     readonly state: Buffer | null
+    readonly offsetMs: number | null
+    readonly timestamp: number | null
 
     constructor(params: {
         schema: string,
         id: bigint,
         numAttempts: number,
-        delayMs?: number,
-        state?: Buffer | null
+        state: Buffer | null
+        offsetMs: number | null,
+        timestamp: number | null
     }) {
-        const delayMs = params.delayMs === undefined
-            ? DELAY_MS_DEFAULT
-            : params.delayMs
-
         this.schema = params.schema
         this.numAttempts = params.numAttempts
         this.id = params.id
-        this.delayMs = delayMs
-        this.state = params.state ?? null
+        this.state = params.state
+        this.offsetMs = params.offsetMs
+        this.timestamp = params.timestamp
     }
 
     async execute(databaseClient: DatabaseClient): Promise<MessageDeferCommandResult> {
@@ -56,12 +55,14 @@ export class MessageDeferCommand {
                 $1::BIGINT,
                 $2::BIGINT,
                 $3::BIGINT,
-                $4
+                $4::BIGINT,
+                $5
             )
         `.value, [
             this.id.toString(),
             this.numAttempts,
-            this.delayMs,
+            this.timestamp,
+            this.offsetMs,
             this.state
         ]).then(res => res.rows[0] as QueryResult)
 

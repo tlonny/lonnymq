@@ -1,14 +1,27 @@
-import { MessageCreateCommand } from "@src/command/message-create"
-import { ref, sql } from "@src/core/sql"
+import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
+import { MessageCreateCommand, type MessageCreateCommandResultMessageCreated, type MessageCreateCommandResultMessageDropped } from "@src/command/message-create"
 import { Queue } from "@src/queue"
 import { queueEventDecode } from "@src/queue/event"
 import { beforeEach, expect, test } from "bun:test"
-import { Pool } from "pg"
+import { Pool, type PoolClient } from "pg"
 
 const EVENT_CHANNEL = "events"
 const SCHEMA = "test"
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const queue = new Queue({ schema: SCHEMA })
+
+const tx = async <T>(fn: (client: PoolClient) => Promise<T>) => {
+    const client = await pool.connect()
+    try {
+        await client.query("BEGIN")
+        const result = await fn(client)
+        await client.query("COMMIT")
+        return result
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    }
+}
 
 beforeEach(async () => {
     await pool.query(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`)
@@ -21,90 +34,150 @@ beforeEach(async () => {
 test("MessageCreateCommand persists a message in the DB", async () => {
     const command = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         content: Buffer.from("hello"),
-        timestamp: null,
-        offsetMs: 10,
+        dequeueAt: 100,
     })
 
     const client = await pool.connect()
     await client.query(`LISTEN "${EVENT_CHANNEL}"`)
-    let events: any[] = []
-    client.on("notification", (msg) => {
-        if (msg.channel === EVENT_CHANNEL) {
-            events.push(queueEventDecode(msg.payload as string))
-        }
-    })
+
+    const events: any[] = []
+    const lock = Promise.race([
+        new Promise<void>((rs) => setTimeout(() => rs(), 5_000)),
+        new Promise<void>((rs) => {
+            client.on("notification", (msg) => {
+                if (msg.channel === EVENT_CHANNEL) {
+                    events.push(queueEventDecode(msg.payload as string))
+                    rs()
+                }
+            })
+        })
+    ])
 
     try {
-        const result = await command.execute(pool)
-        const message = await pool.query("SELECT * FROM test.message").then(res => res.rows[0])
-        const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
+        await tx(async (client) => {
+            const now = await client.query("SELECT test.epoch() AS now").then(res => res.rows[0].now as number)
+            const result = await command.execute(client) as MessageCreateCommandResultMessageCreated
+            const message = await client.query("SELECT * FROM test.message").then(res => res.rows[0])
+            const channelState = await client.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
-        expect(message).toMatchObject({
-            id: result.id.toString(),
-            num_attempts: "0",
-            content: Buffer.from("hello"),
-            channel_name: "alpha",
+            expect(message).toMatchObject({
+                id: result.id.toString(),
+                num_attempts: "0",
+                content: Buffer.from("hello"),
+                channel_id: "alpha",
+            })
+
+            expect(channelState).toMatchObject({
+                message_id: result.id.toString(),
+                current_size: 1,
+                message_dequeue_at: "100",
+                dequeue_next_at: now.toString(),
+            })
         })
 
-        expect(channelState).toMatchObject({
-            message_id: result.id.toString(),
-            current_size: 1,
-            message_dequeue_at: message.dequeue_at
-        })
-
+        await lock
+        client.removeAllListeners("notification")
         expect(events).toHaveLength(1)
         expect(events[0]).toMatchObject({
             eventType: "MESSAGE_CREATED",
-            offsetMs: 10,
         })
-
     } finally {
-        client.release()
+        await client.release()
     }
+})
+
+test("MessageCreateCommand correctly drops messages when channel is full", async () => {
+    await new ChannelPolicySetCommand({
+        schema: SCHEMA,
+        channelId: "alpha",
+        maxSize: 2
+    }).execute(pool)
+
+    const createCommand = new MessageCreateCommand({
+        schema: SCHEMA,
+        channelId: "alpha",
+        dequeueAt: 10,
+        content: Buffer.from("hello"),
+    })
+
+    const firstResult = await createCommand.execute(pool) as MessageCreateCommandResultMessageCreated
+    expect(firstResult.resultType).toBe("MESSAGE_CREATED")
+
+    const secondResult = await createCommand.execute(pool) as MessageCreateCommandResultMessageCreated
+    expect(secondResult.resultType).toBe("MESSAGE_CREATED")
+
+    const thirdResult = await createCommand.execute(pool) as MessageCreateCommandResultMessageDropped
+    expect(thirdResult.resultType).toBe("MESSAGE_DROPPED")
 })
 
 test("MessageCreateCommand correctly updates channelState when preempting a \"lower\" priority message", async () => {
     const firstCommand = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        timestamp: null,
-        offsetMs: 0,
+        channelId: "alpha",
+        dequeueAt: 10,
         content: Buffer.from("hello"),
     })
 
     const secondCommand = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        timestamp: null,
-        offsetMs: -50,
+        channelId: "alpha",
+        dequeueAt: 5,
         content: Buffer.from("hello"),
     })
 
-    const firstResult = await firstCommand.execute(pool)
-    const secondResult = await secondCommand.execute(pool)
+    await tx(async (client) => {
+        const now = await client.query(
+            "SELECT test.epoch() AS now"
+        ).then(res => res.rows[0].now as number)
 
-    const firstMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [firstResult.id]).then(res => res.rows[0])
-    const secondMessage = await pool.query("SELECT * FROM test.message WHERE id = $1", [secondResult.id]).then(res => res.rows[0])
+        const firstResult = await firstCommand.execute(client) as MessageCreateCommandResultMessageCreated
 
-    const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
-    expect(channelState).toMatchObject({
-        name: "alpha",
-        current_size: 2,
-        dequeue_next_at: firstMessage.dequeue_at,
-        message_dequeue_at: secondMessage.dequeue_at,
-        message_id: secondResult.id.toString(),
+        const firstMessage = await client.query(
+            "SELECT * FROM test.message WHERE id = $1",
+            [firstResult.id]
+        ).then(res => res.rows[0])
+
+        const channelStateFirst = await client.query(
+            "SELECT * FROM test.channel_state"
+        ).then(res => res.rows[0])
+
+        expect(channelStateFirst).toMatchObject({
+            id: "alpha",
+            current_size: 1,
+            dequeue_next_at: now,
+            message_dequeue_at: firstMessage.dequeue_at,
+            message_id: firstResult.id.toString(),
+        })
+
+        const secondResult = await secondCommand.execute(client) as MessageCreateCommandResultMessageCreated
+
+        const secondMessage = await client.query(
+            "SELECT * FROM test.message WHERE id = $1",
+            [secondResult.id]
+        ).then(res => res.rows[0])
+
+        const channelStateSecond = await client.query(
+            "SELECT * FROM test.channel_state"
+        ).then(res => res.rows[0])
+
+        expect(channelStateSecond).toMatchObject({
+            id: "alpha",
+            current_size: 2,
+            dequeue_next_at: now,
+            message_dequeue_at: secondMessage.dequeue_at,
+            message_id: secondResult.id.toString(),
+        })
     })
 })
 
 test("MessageCreateCommand correctly returns the channel size", async () => {
     const command = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello"),
-        offsetMs: 10,
     })
 
     const firstResult = await command.execute(pool)
@@ -131,50 +204,15 @@ test("MessageCreateCommand persists supplied dequeueAt", async () => {
 
     const command = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         content: Buffer.from("hello"),
-        timestamp: dequeueAt,
-        offsetMs: null,
+        dequeueAt: dequeueAt,
     })
 
-    const result = await command.execute(pool)
+    const result = await command.execute(pool) as MessageCreateCommandResultMessageCreated
     const message = await pool
         .query("SELECT dequeue_at FROM test.message WHERE id = $1", [result.id])
         .then(res => res.rows[0])
 
     expect(Number(message.dequeue_at)).toBe(dequeueAt)
-})
-
-test("MessageCreateCommand sets dequeue_at = DB NOW() + offsetMs", async () => {
-    const offsetMs = 1_234
-    const client = await pool.connect()
-
-    try {
-        await client.query("BEGIN")
-
-        const dbNow = await client
-            .query(sql`SELECT ${ref(SCHEMA)}."epoch"() AS now`.value)
-            .then(res => Number(res.rows[0].now))
-
-        const command = new MessageCreateCommand({
-            schema: SCHEMA,
-            channelName: "alpha",
-            content: Buffer.from("hello"),
-            offsetMs,
-            timestamp: null,
-        })
-
-        const result = await command.execute(client)
-        const message = await client
-            .query("SELECT dequeue_at FROM test.message WHERE id = $1", [result.id])
-            .then(res => res.rows[0])
-
-        expect(Number(message.dequeue_at)).toBe(dbNow + offsetMs)
-        await client.query("ROLLBACK")
-    } catch (e) {
-        await client.query("ROLLBACK")
-        throw e
-    } finally {
-        client.release()
-    }
 })

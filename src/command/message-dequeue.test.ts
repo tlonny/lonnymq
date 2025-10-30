@@ -1,5 +1,5 @@
 import { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
-import { MessageCreateCommand } from "@src/command/message-create"
+import { MessageCreateCommand, type MessageCreateCommandResultMessageCreated } from "@src/command/message-create"
 import { MessageDeferCommand } from "@src/command/message-defer"
 import { MessageDeleteCommand } from "@src/command/message-delete"
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
@@ -24,9 +24,8 @@ beforeEach(async () => {
 test("MessageDequeueCommand correctly increments channelState", async () => {
     const messageCreate1Command = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello")
     })
 
@@ -34,19 +33,18 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
 
     await new ChannelPolicySetCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         releaseIntervalMs: 50,
     }).execute(pool)
 
     const messageCreate2Command = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello")
     })
 
-    const createResult = await messageCreate2Command.execute(pool)
+    const createResult = await messageCreate2Command.execute(pool) as MessageCreateCommandResultMessageCreated
 
     const messageDequeueCommand = new MessageDequeueCommand({ schema: SCHEMA, lockMs: 600 })
 
@@ -56,7 +54,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
     const channelState = await pool.query("SELECT * FROM test.channel_state").then(res => res.rows[0])
 
     expect(channelState).toMatchObject({
-        name: "alpha",
+        id: "alpha",
         current_size: 2,
         message_id: createResult.id.toString(),
         dequeue_next_at: String(Number(channelState.dequeue_prev_at) + 50)
@@ -67,7 +65,7 @@ test("MessageDequeueCommand correctly increments channelState", async () => {
 test("MessageDequeueCommand dequeues messages in the correct order with correct metadata", async () => {
     await new ChannelPolicySetCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         maxConcurrency: 1
     }).execute(pool)
 
@@ -78,9 +76,8 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
         for (const content of messageContents) {
             await new MessageCreateCommand({
                 schema: SCHEMA,
-                channelName: "alpha",
-                offsetMs: null,
-                timestamp: null,
+                channelId: "alpha",
+                dequeueAt: null,
                 content: Buffer.from(content)
             }).execute(client)
         }
@@ -115,8 +112,7 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
                 await new MessageDeferCommand({
                     schema: SCHEMA,
                     numAttempts: result.numAttempts,
-                    offsetMs: null,
-                    timestamp: null,
+                    dequeueAt: null,
                     state: null,
                     id: result.id
                 }).execute(pool)
@@ -139,15 +135,14 @@ test("MessageDequeueCommand dequeues messages in the correct order with correct 
 test("MessageDequeueCommand correctly increments numAttempts after defer", async () => {
     await new ChannelPolicySetCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         maxConcurrency: 1
     }).execute(pool)
 
     await new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("test message")
     }).execute(pool)
 
@@ -158,8 +153,7 @@ test("MessageDequeueCommand correctly increments numAttempts after defer", async
     await new MessageDeferCommand({
         schema: SCHEMA,
         numAttempts: firstDequeueResult.numAttempts,
-        offsetMs: null,
-        timestamp: null,
+        dequeueAt: null,
         state: null,
         id: firstDequeueResult.id
     }).execute(pool)
@@ -172,15 +166,14 @@ test("MessageDequeueCommand correctly increments numAttempts after defer", async
 test("MessageDequeueCommand correctly sets isUnlocked", async () => {
     await new ChannelPolicySetCommand({
         schema: SCHEMA,
-        channelName: "alpha",
+        channelId: "alpha",
         maxConcurrency: 1
     }).execute(pool)
 
     await new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("test message")
     }).execute(pool)
 

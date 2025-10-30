@@ -9,27 +9,32 @@ export const installFunctionChannelPolicySet = {
         return [
             sql`
                 CREATE FUNCTION ${ref(params.schema)}."channel_policy_set" (
-                    p_name TEXT,
+                    p_id TEXT,
                     p_max_concurrency INTEGER,
+                    p_max_size INTEGER,
                     p_release_interval_ms INTEGER
                 ) RETURNS VOID AS $$
                 BEGIN
                     INSERT INTO ${ref(params.schema)}."channel_policy" (
-                        "name",
+                        "id",
                         "max_concurrency",
+                        "max_size",
                         "release_interval_ms"
                     ) VALUES (
-                        p_name,
+                        p_id,
                         p_max_concurrency,
+                        p_max_size,
                         p_release_interval_ms
-                    ) ON CONFLICT ("name") DO UPDATE SET
+                    ) ON CONFLICT ("id") DO UPDATE SET
                         "max_concurrency" = EXCLUDED."max_concurrency",
+                        "max_size" = EXCLUDED."max_size",
                         "release_interval_ms" = EXCLUDED."release_interval_ms";
 
                     UPDATE ${ref(params.schema)}."channel_state" SET
                         "max_concurrency" = p_max_concurrency,
+                        "max_size" = p_max_size,
                         "release_interval_ms" = p_release_interval_ms
-                    WHERE "name" = p_name;
+                    WHERE "id" = p_id;
                 END;
                 $$ LANGUAGE plpgsql;
             `

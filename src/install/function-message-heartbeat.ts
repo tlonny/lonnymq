@@ -20,15 +20,12 @@ export const installFunctionMessageHeartbeat = {
                 ) AS $$
                 DECLARE
                     v_now BIGINT;
-                    v_channel_state RECORD;
                     v_message RECORD;
-                    v_dequeue_at BIGINT;
                 BEGIN
                     v_now := ${ref(params.schema)}."epoch"();
 
                     SELECT
                         "message"."id",
-                        "message"."channel_name",
                         "message"."num_attempts",
                         "message"."is_locked",
                         "message"."unlock_at"

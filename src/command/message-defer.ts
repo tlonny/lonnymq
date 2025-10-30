@@ -30,23 +30,20 @@ export class MessageDeferCommand {
     readonly id: bigint
     readonly numAttempts: number
     readonly state: Buffer | null
-    readonly offsetMs: number | null
-    readonly timestamp: number | null
+    readonly dequeueAt: number | null
 
     constructor(params: {
         schema: string,
         id: bigint,
         numAttempts: number,
         state: Buffer | null
-        offsetMs: number | null,
-        timestamp: number | null
+        dequeueAt: number | null
     }) {
         this.schema = params.schema
         this.numAttempts = params.numAttempts
         this.id = params.id
         this.state = params.state
-        this.offsetMs = params.offsetMs
-        this.timestamp = params.timestamp
+        this.dequeueAt = params.dequeueAt
     }
 
     async execute(databaseClient: DatabaseClient): Promise<MessageDeferCommandResult> {
@@ -55,14 +52,12 @@ export class MessageDeferCommand {
                 $1::BIGINT,
                 $2::BIGINT,
                 $3::BIGINT,
-                $4::BIGINT,
-                $5
+                $4
             )
         `.value, [
             this.id.toString(),
             this.numAttempts,
-            this.timestamp,
-            this.offsetMs,
+            this.dequeueAt,
             this.state
         ]).then(res => res.rows[0] as QueryResult)
 

@@ -10,7 +10,7 @@ export const messageLockedDequeueQuery = (params : {
         "message"."id",
         "message"."state",
         "message"."content",
-        "message"."channel_name",
+        "message"."channel_id",
         "message"."unlock_at",
         "message"."num_attempts"
     FROM ${ref(params.schema)}."message"
@@ -24,7 +24,6 @@ export const channelDequeueQuery = (params : {
 }) => sql`
     SELECT
         "channel_state"."id",
-        "channel_state"."name",
         "channel_state"."release_interval_ms",
         "channel_state"."message_id",
         "channel_state"."dequeue_next_at",
@@ -38,14 +37,14 @@ export const channelDequeueQuery = (params : {
 
 export const messageNextDequeueQuery = (params : {
     schema: string,
-    channelName: SqlNode
+    channelId: SqlNode
 }) => sql`
     SELECT
         "message"."id",
         "message"."dequeue_at"
     FROM ${ref(params.schema)}."message"
     WHERE NOT "is_locked"
-    AND "channel_name" = ${params.channelName}
+    AND "channel_id" = ${params.channelId}
     ORDER BY "dequeue_at" ASC, "id" ASC
 `
 
@@ -60,7 +59,7 @@ export const installFunctionMessageDequeue = {
         })
 
         const messageNextDequeue = messageNextDequeueQuery({
-            channelName: sql`v_channel_state."name"`,
+            channelId: sql`v_channel_state."id"`,
             schema: params.schema,
         })
 
@@ -107,7 +106,7 @@ export const installFunctionMessageDequeue = {
                             JSON_BUILD_OBJECT(
                                 'id', v_message_locked."id",
                                 'is_unlocked', TRUE,
-                                'channel_name', v_message_locked."channel_name",
+                                'channel', v_message_locked."channel_id",
                                 'num_attempts', v_message_locked."num_attempts" + 1
                             );
                         RETURN;
@@ -130,7 +129,7 @@ export const installFunctionMessageDequeue = {
 
                     SELECT
                         "message"."id",
-                        "message"."channel_name",
+                        "message"."channel_id",
                         "message"."content",
                         "message"."num_attempts",
                         "message"."state"
@@ -174,7 +173,7 @@ export const installFunctionMessageDequeue = {
                         JSON_BUILD_OBJECT(
                             'id', v_message_dequeue."id"::TEXT,
                             'is_unlocked', FALSE,
-                            'channel_name', v_message_dequeue."channel_name",
+                            'channel_id', v_message_dequeue."channel_id",
                             'num_attempts', v_message_dequeue."num_attempts" + 1
                         );
                     RETURN;

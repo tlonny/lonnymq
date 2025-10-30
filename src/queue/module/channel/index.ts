@@ -10,19 +10,19 @@ export class QueueChannelModule<T> {
     constructor(params: {
         schema: string,
         adaptor: DatabaseClientAdaptor<T>
-        channelName: string,
+        channelId: string,
     }) {
 
         this.message = new QueueChannelMessageModule({
             schema: params.schema,
             adaptor: params.adaptor,
-            channelName: params.channelName
+            channelId: params.channelId
         })
 
         this.policy = new QueueChannelPolicyModule({
             schema: params.schema,
             adaptor: params.adaptor,
-            channelName: params.channelName
+            channelId: params.channelId
         })
     }
 

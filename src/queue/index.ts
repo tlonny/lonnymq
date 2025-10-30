@@ -62,7 +62,7 @@ export class Queue<T = DatabaseClient> {
                     schema: this.schema,
                     adaptor: this.adaptor,
                     id: result.id,
-                    channelName: result.channelName,
+                    channelId: result.channelId,
                     isUnlocked: result.isUnlocked,
                     content: result.content,
                     state: result.state,
@@ -74,11 +74,11 @@ export class Queue<T = DatabaseClient> {
         }
     }
 
-    channel(channelName: string) {
+    channel(channelId: string) {
         return new QueueChannelModule({
             adaptor: this.adaptor,
             schema: this.schema,
-            channelName: channelName
+            channelId: channelId
         })
     }
 

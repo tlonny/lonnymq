@@ -3,10 +3,6 @@ import { MessageDeleteCommand } from "@src/command/message-delete"
 import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import type { DatabaseClientAdaptor } from "@src/core/database"
 
-export type QueueMessageScheduleParams =
-    | { scheduleType: "OFFSET", offsetMs: number }
-    | { scheduleType: "TIMESTAMP", timestamp: number }
-
 export class QueueMessage<T> {
 
     private readonly schema: string
@@ -14,7 +10,7 @@ export class QueueMessage<T> {
 
     readonly id : bigint
     readonly isUnlocked: boolean
-    readonly channelName: string
+    readonly channelId: string
     readonly content: Buffer
     readonly state: Buffer | null
     readonly numAttempts: number
@@ -23,7 +19,7 @@ export class QueueMessage<T> {
         schema: string,
         adaptor: DatabaseClientAdaptor<T>
         id: bigint,
-        channelName: string,
+        channelId: string,
         isUnlocked: boolean,
         content: Buffer,
         state: Buffer | null,
@@ -32,7 +28,7 @@ export class QueueMessage<T> {
         this.schema = params.schema
         this.adaptor = params.adaptor
         this.id = params.id
-        this.channelName = params.channelName
+        this.channelId = params.channelId
         this.isUnlocked = params.isUnlocked
         this.content = params.content
         this.state = params.state
@@ -42,24 +38,15 @@ export class QueueMessage<T> {
     async defer(params: {
         databaseClient: T,
         state? : Buffer,
-        schedule?: QueueMessageScheduleParams
+        dequeueAt?: number
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
-
-        const offsetMs = params.schedule && params.schedule.scheduleType === "OFFSET"
-            ? params.schedule.offsetMs
-            : null
-
-        const timestamp = params.schedule && params.schedule.scheduleType === "TIMESTAMP"
-            ? params.schedule.timestamp
-            : null
 
         return new MessageDeferCommand({
             schema: this.schema,
             id: this.id,
             numAttempts: this.numAttempts,
-            offsetMs: offsetMs,
-            timestamp: timestamp,
+            dequeueAt: params.dequeueAt ?? null,
             state: params.state ?? null,
         }).execute(adaptedClient)
     }

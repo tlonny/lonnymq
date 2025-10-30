@@ -4,23 +4,12 @@ export type {
     DatabaseClientQueryResult,
 } from "@src/core/database"
 
-export type {
-    QueueMessage,
-    QueueMessageScheduleParams
-} from "@src/queue/message"
-
-export type {
-    QueueMessageModule,
-    QueueMessageModuleScheduleParams
-} from "@src/queue/module/message"
+export type { QueueMessage } from "@src/queue/message"
+export type { QueueMessageModule } from "@src/queue/module/message"
 
 export type { QueueChannelModule } from "@src/queue/module/channel"
 export type { QueueChannelPolicyModule } from "@src/queue/module/channel/policy"
-
-export type {
-    QueueChannelMessageModule,
-    QueueChannelMessageModuleScheduleParams
-} from "@src/queue/module/channel/message"
+export type { QueueChannelMessageModule } from "@src/queue/module/channel/message"
 
 export type {
     QueueEvent,
@@ -34,6 +23,8 @@ export { ChannelPolicySetCommand } from "@src/command/channel-policy-set"
 
 export {
     MessageCreateCommand,
+    type MessageCreateCommandResultMessageCreated,
+    type MessageCreateCommandResultMessageDropped,
     type MessageCreateCommandResult
 } from "@src/command/message-create"
 

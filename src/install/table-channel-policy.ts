@@ -6,22 +6,15 @@ export const installTableChannelPolicy = {
     sql: (params : {
         schema: string,
     }) => {
-        const nameIndex = [params.schema, "channel_policy_name_ux"].join("_")
-
         return [
             sql`
                 CREATE TABLE ${ref(params.schema)}."channel_policy" (
-                    "id" BIGSERIAL,
-                    "name" TEXT NOT NULL,
+                    "id" TEXT NOT NULL,
                     "max_concurrency" INTEGER,
+                    "max_size" INTEGER,
                     "release_interval_ms" INTEGER,
                     PRIMARY KEY ("id")
                 );
-            `,
-
-            sql`
-                CREATE UNIQUE INDEX ${ref(nameIndex)}
-                ON ${ref(params.schema)}."channel_policy" ("name");
             `,
         ]
     }

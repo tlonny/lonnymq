@@ -24,7 +24,7 @@ export const installFunctionMessageDelete = {
                 BEGIN
                     SELECT
                         "message"."id",
-                        "message"."channel_name",
+                        "message"."channel_id",
                         "message"."num_attempts",
                         "message"."is_locked"
                     FROM ${ref(params.schema)}."message"
@@ -45,7 +45,7 @@ export const installFunctionMessageDelete = {
                     SELECT
                         "channel_policy"."id"
                     FROM ${ref(params.schema)}."channel_policy"
-                    WHERE "name" = v_message."channel_name"
+                    WHERE "id" = v_message."channel_id"
                     FOR SHARE
                     INTO v_channel_policy;
 
@@ -54,7 +54,7 @@ export const installFunctionMessageDelete = {
                         "channel_state"."current_size",
                         "channel_state"."current_concurrency"
                     FROM ${ref(params.schema)}."channel_state"
-                    WHERE "name" = v_message."channel_name"
+                    WHERE "id" = v_message."channel_id"
                     FOR UPDATE
                     INTO v_channel_state;
 

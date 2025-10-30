@@ -4,15 +4,15 @@ import { ref, sql } from "@src/core/sql"
 export class ChannelPolicyClearCommand {
 
     readonly schema: string
-    readonly channelName: string
+    readonly channelId: string
     readonly createdAt: Date
 
     constructor(params: {
         schema: string,
-        channelName: string
+        channelId: string
     }) {
         this.schema = params.schema
-        this.channelName = params.channelName
+        this.channelId = params.channelId
         this.createdAt = new Date()
     }
 
@@ -22,7 +22,7 @@ export class ChannelPolicyClearCommand {
                 $1
             )
         `.value, [
-            this.channelName
+            this.channelId
         ])
     }
 }

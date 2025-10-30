@@ -66,7 +66,7 @@ test("messageNextDequeueQuery uses index scans", async () => {
         await client.query("SET LOCAL enable_bitmapscan = OFF")
         const query = sql`
             EXPLAIN (COSTS OFF)
-            ${messageNextDequeueQuery({ schema: SCHEMA, channelName: value("foo") })}
+            ${messageNextDequeueQuery({ schema: SCHEMA, channelId: value("foo") })}
         `
         const result = await client.query(query.value)
         expect(result.rows.length).toBeGreaterThan(0)

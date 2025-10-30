@@ -6,15 +6,24 @@ A high-performance, multi-tenant PostgreSQL message queue implementation for Nod
 
 - High throughput message processing
 - Multi-tenant concurrency and rate limits
-- Durable message processing.
-- Support for retries, recovery and custom back-off strategies.
-- Message prioritisation.
+- Durable message processing
+- Support for retries, recovery and custom back-off strategies
+- Message prioritisation
 - Queue operations as part of *existing* database transactions
 - Database client agnostic with optional adapters
-- Granular events via PostgreSQL `NOTIFY` - Avoid poling workers!
+- Granular events via PostgreSQL `NOTIFY` (Avoid relying on polling to fetch new messages)
 - Zero dependencies
 
 **Note:** Unlike other queue implementations, LonnyMQ provides direct access to queue methods rather than providing batteries-included Worker/Processor daemons.
+
+### Benchmarking
+
+With the following parameters:
+ - Everything running in a single Bun instance
+ - A locally hosted postgres database
+ - The code as-is below in "Quick Look", but with 8 producers and 8 consumers
+
+A message throughput of **~1,800** messages per second is observed.
 
 ## Quick Look
 
@@ -24,33 +33,43 @@ import { Pool } from "pg"
 
 const databaseClient = new Pool({ connectionString: process.env.DATABASE_URL })
 const queue = new Queue({ schema: "lonny" })
+const content = Buffer.from("hello world")
 
-// Install the queue to the database
-for (const sql of queue.install()) {
-    await databaseClient.query(sql, [])
-}
+const produce = async () => {
+    while (true) {
+        const result = await queue.message.create({
+            databaseClient: pool,
+            content: content
+        })
 
-// Create messages
-for (let ix = 0; ix < 500; ix += 1) {
-    await queue.message.create({ 
-        databaseClient,
-        content: Buffer.from("Hello")
-    })
-}
+        if (result.resultType !== "MESSAGE_CREATED") {
+            continue
+        }
 
-// Process messages
-while (true) {
-    const dequeueResult = await queue.dequeue({ 
-        databaseClient,
-        lockMs: 30_000 
-    })
-    if (dequeueResult.resultType === "MESSAGE_NOT_AVAILABLE") {
-        break
+        if (result.channelSize > 1_000) {
+            await sleep(result.channelSize)
+        }
     }
-
-    console.log(dequeueResult.message.content.toString())
-    await dequeueResult.message.delete({ databaseClient })
 }
+
+const consume = async () => {
+    while (true) {
+        const result = await queue.dequeue({
+            databaseClient: pool,
+            lockMs: 1_000
+        })
+
+        if (result.resultType === "MESSAGE_DEQUEUED") {
+            await result.message.delete({ databaseClient: pool })
+        }
+    }
+}
+
+// Kick off producer loop
+produce()
+
+// Kick off consumer loop
+consume()
 ```
 
 ## Setup & Installation
@@ -61,13 +80,26 @@ LonnyMQ can be installed from npm:
 npm install lonnymq
 ```
 
-Once the package is installed, the queue needs to be "installed" to a postgres schema. The requisite SQL for this can be generated via: `queue.install()`.
+Once the package is installed, the queue needs to be "installed" to a postgres schema. The requisite SQL for this can be generated via: 
+
+```typescript
+const sqlCommands = queue.install({
+    eventChannel: "lonnymq-events",
+
+for(const sql of sqlCommands) {
+    await pool
+}
+})
+```
+
+_Optional_ parameters can be passed in to alter default queue behaviour/semantics. If an `eventChannel` is provided, LonnyMQ will publish queue events to the channel provided via `NOTIFY`.
+
 
 ## Channels
 
 Channels provide LonnyMQ's multi-tenancy support. They can be considered lightweight sub-queues that are read from in round-robin fashion. There is no performance penalty for using large numbers of channels, so they can be assigned on a highly granular basis (e.g., per-user) to ensure work is scheduled fairly.
 
-Channels can be configured with concurrency and rate limits by setting their "channel policy":
+Channels can be configured with rate limiting, concurrency and capacity constraints by setting their _channel policy_:
 
 ```typescript
 await queue
@@ -76,7 +108,8 @@ await queue
     .set({ 
         databaseClient,
         maxConcurrency: 1,
-        releaseIntervalMs: 1000
+        releaseIntervalMs: 1000,
+        maxSize: 1_000
     })
 
 // Remove all constraints:
@@ -109,54 +142,25 @@ await queue
     })
 ```
 
-By default, created messages are immediately available for processing. To set an explicit schedule for when the message should be processed we can pass a `schedule` parameter that either specifies a relative offset or absolute unix timestamp (in ms).
+By default, created messages are immediately available for processing. To delay availability you can pass a `dequeueAt` unix timestamp (in milliseconds) that specifies the earliest time the message may be dequeued.
 
 ```typescript
 await queue.message.create({
-        databaseClient,
-        content: Buffer.from("Hello, world"),
-        schedule: {
-            scheduleType: "TIMESTAMP",
-            timestamp: Date.now() + 5_000 // 5s in the future
-        }
-    })
-
-await queue.message.create({
-        databaseClient,
-        content: Buffer.from("Hello, world"),
-        schedule: {
-            scheduleType: "OFFSET",
-            offsetMs: 5_000 // 5s in the future
-        }
-    })
+    databaseClient,
+    content: Buffer.from("Hello, world"),
+    dequeueAt: Date.now() + 5_000 // 5s in the future
+})
 ```
 
-N.B. `OFFSET` scheduling is relative to the _database_ clock and thus avoid accuracy issues caused by clock drift between worker daemons and the database.
+N.B. `dequeueAt` is compared against the _database_ clock.
 
 ### Message Prioritization
 
-LonnyMQ doesn't use an explicit message priority field for performance reasons. In short, there is no way to find the highest priority message that is also available for dequeue for a particular channel using _just_ an Index Scan.
+LonnyMQ doesn't use an explicit message priority field for performance reasons. In short, there is no way to find the highest priority message that is also available for dequeue for a particular channel without some degree of linear scanning in the worst case vs. simply using a logarithmic index lookup. 
 
-However, we note that messages that _are_ available for processing are dequeued from their channels in order of their _scheduled_ processing times (oldest first). Thus, we can (ab)use `TIMESTAMP` scheduling by using _historic_ timestamp values as a stand-in for priority (where 0 would be the highest priority message).
+However, messages that _are_ available for processing are dequeued from their channels in order of their `dequeueAt` values (oldest first). Thus, by overloading the semantics of the `dequeueAt` field and using _historic_ unix timestamps (i.e. `0`, `1`, `2`, etc.) - messages can trivially be prioritized within a channel.
 
-N.B. there is no way to _globally_ prioritize a message. Regardless of how a message is prioritized within a channel, the channel will still be accessed in a round robin fashion in accordance with its channel policy (should it exist).
-
-```typescript
-const HIGHEST_PRIORITY = 0
-const HIGH_PRIORITY = 1
-const NORMAL_PRIORITY = 2
-const LOW_PRIORITY = 3
-const LOWEST_PRIORITY = 4
-
-await queue.message.create({
-        databaseClient,
-        content: Buffer.from("Hello, world"),
-        schedule: {
-            scheduleType: "TIMESTAMP",
-            timestamp: HIGH_PRIORITY
-        }
-    })
-```
+N.B. there is no way to _globally_ prioritize a message - channels will _always_ be accessed in a round-robin fashion.
 
 ## Message Processing
 
@@ -186,10 +190,10 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
             await message.delete({ databaseClient })
         } else {
             // Defer for retry with exponential backoff and updated state
-            const backoffMs = Math.pow(2, message.numAttempts) * 1000
+            const backoffMs = Math.pow(2, message.numAttempts) * 1_000
             await message.defer({ 
                 databaseClient,
-                schedule: { scheduleType: "OFFSET", offsetMs: backoffMs },
+                dequeueAt: Date.now() + backoffMs,
                 state: Buffer.from(JSON.stringify({ 
                     error: error.message,
                     lastAttempt: new Date().toISOString()
@@ -204,7 +208,7 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
 
 The `lockMs` parameter on `dequeue()` specifies how long a message will remain exclusively locked after being dequeued. While locked, the message is **not available** for subsequent `dequeue()` calls, preventing duplicate processing. If your process crashes or takes longer than expected, the message will automatically become available for dequeue again after the lock expires.
 
-When a message is deferred - it becomes immediately available for re-processing. Similarly to message creation, this behaviour can again be overridden with an optional `schedule` parameter.
+When a message is deferred it becomes immediately available for re-processing unless you supply a `dequeueAt` timestamp.
 
 **Note:** The above shows just one processing pattern (defer on failure with retry limits). You have complete flexibility in how you handle message processing - you might delete messages immediately, defer them unconditionally, implement different retry strategies based on error types, or use the message metadata (attempts, state, channel) to make sophisticated routing decisions.
 
@@ -236,7 +240,10 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
         await longTask
         await message.delete({ databaseClient })
     } catch (error) {
-        await message.defer({ databaseClient, offsetMs: 60_000 })
+        await message.defer({ 
+            databaseClient, 
+            dequeueAt: Date.now() + 60_000 
+        })
     } finally {
         clearInterval(heartbeatInterval)
     }
@@ -245,7 +252,7 @@ if (dequeueResult.resultType === "MESSAGE_DEQUEUED") {
 
 ### Graceful Shutdowns and Message Recovery
 
-If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput until the lock expires. To mitigate this problem, it's essential that you shut down gracefully by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalize all outstanding messages before exiting.
+If your program ends unexpectedly, messages that are currently being processed may become "orphaned" in a locked state - causing channel blockages and reducing throughput until locks expire. To mitigate this problem, it's essential that you shut down gracefully by catching unhandled exceptions and signals (i.e., `SIGINT`/`SIGTERM`) and finalize all outstanding messages before exiting.
 
 ## Events
 
@@ -254,8 +261,6 @@ Using PostgreSQL `NOTIFY`, we can receive a granular stream of queue events:
   1. `MESSAGE_CREATED`
   2. `MESSAGE_DEFERRED`
   4. `MESSAGE_DELETED`
-
-To enable this feature, ensure the optional `eventChannel` is defined when generating the installation SQL.
 
 ```typescript
 const install = queue.install({ eventChannel: "EVENTS"})
@@ -281,7 +286,7 @@ while (true) {
 }
 ```
 
-To improve reactivity, you can use the events system to track when new messages become available. By listening for `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events and tracking their `offsetMs`, you can determine the optimal time to retry dequeuing:
+To improve reactivity, you can use the events system to track when new messages become available. By listening for `MESSAGE_CREATED` and `MESSAGE_DEFERRED` events and tracking their `dequeueAt` values, you can determine the optimal time to retry dequeuing:
 
 ```typescript
 // LISTEN/NOTIFY only works with a single connection - not on a connection pool.
@@ -292,10 +297,9 @@ let nextWakeTime = Date.now()
 
 client.on("notification", (msg) => {
     if (msg.channel === "EVENTS") {
-        const event = queueEventDecode(msg.payload as string)
+        const event = Queue.decode(msg.payload as string)
         if (event.eventType === "MESSAGE_CREATED" || event.eventType === "MESSAGE_DEFERRED") {
-            const messageAvailableAt = Date.now() + event.offsetMs
-            nextWakeTime = Math.min(nextWakeTime, messageAvailableAt)
+            nextWakeTime = Math.min(nextWakeTime, event.dequeueAt)
         }
     }
 })
@@ -307,13 +311,13 @@ The `MESSAGE_DELETED` event can be used to create coordination patterns where on
 
 ## Deadlocks
 
-If all queue actions are isolated to their own transaction, there is zero risk of deadlocks occurring. That being said, it is *possible* to safely bulk-perform the following actions within a single transaction if we ensure they are performed in a consistent ordering with respect to the target channel name:
+If all queue actions are isolated to their own transaction, there is zero risk of deadlocks occurring. That being said, it is *possible* to safely bulk-perform the following actions within a single transaction if we ensure they are performed in a consistent ordering with respect to the target channel:
 
 - Message create
 - Channel policy set  
 - Channel policy clear
 
-Beyond the actions specified above, it is manifestly **unsafe** to bulk-perform any of the remaining actions within a single transaction. Each of these actions should be isolated within their **own** transaction:
+Beyond the actions specified above, it is **unsafe** to bulk-perform any of the remaining actions within a single transaction. Each of these actions should be isolated within their **own** transaction:
 
 - Message dequeue
 - Message defer

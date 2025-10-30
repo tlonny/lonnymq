@@ -13,8 +13,7 @@ export const installFunctionMessageDefer = {
                 CREATE FUNCTION ${ref(params.schema)}."message_defer" (
                     p_id BIGINT,
                     p_num_attempts BIGINT,
-                    p_timestamp BIGINT,
-                    p_offset_ms BIGINT,
+                    p_dequeue_at BIGINT,
                     p_state BYTEA
                 )
                 RETURNS TABLE (
@@ -30,7 +29,7 @@ export const installFunctionMessageDefer = {
 
                     SELECT
                         "message"."id",
-                        "message"."channel_name",
+                        "message"."channel_id",
                         "message"."num_attempts",
                         "message"."is_locked"
                     FROM ${ref(params.schema)}."message"
@@ -55,14 +54,11 @@ export const installFunctionMessageDefer = {
                         "channel_state"."message_dequeue_at",
                         "channel_state"."dequeue_prev_at"
                     FROM ${ref(params.schema)}."channel_state"
-                    WHERE "name" = v_message."channel_name"
+                    WHERE "id" = v_message."channel_id"
                     FOR UPDATE
                     INTO v_channel_state;
 
-                    v_dequeue_at := COALESCE(
-                        p_timestamp,
-                        v_now + COALESCE(p_offset_ms, 0)
-                    );
+                    v_dequeue_at := COALESCE(p_dequeue_at, v_now);
 
                     IF 
                         v_channel_state."message_id" IS NULL OR 
@@ -77,11 +73,11 @@ export const installFunctionMessageDefer = {
                                 v_channel_state."dequeue_prev_at" + COALESCE(v_channel_state."release_interval_ms", 0),
                                 v_dequeue_at
                             )
-                        WHERE "name" = v_message."channel_name";
+                        WHERE "id" = v_message."channel_id";
                     ELSE
                         UPDATE ${ref(params.schema)}."channel_state" SET
                             "current_concurrency" = v_channel_state."current_concurrency" - 1
-                        WHERE "name" = v_message."channel_name";
+                        WHERE "id" = v_message."channel_id";
                     END IF;
 
                     UPDATE ${ref(params.schema)}."message" SET
@@ -95,7 +91,7 @@ export const installFunctionMessageDefer = {
                             ${value(params.eventChannel)},
                             JSON_BUILD_OBJECT(
                                 'type', ${value(MessageEventType.MESSAGE_DEFERRED)},
-                                'offset_ms', p_offset_ms,
+                                'dequeue_at', v_dequeue_at,
                                 'id', p_id::TEXT
                             )::TEXT
                         );

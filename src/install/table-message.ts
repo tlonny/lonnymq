@@ -10,7 +10,7 @@ export const installTableMessage = {
             sql`
                 CREATE TABLE ${ref(params.schema)}."message" (
                     "id" BIGSERIAL NOT NULL,
-                    "channel_name" TEXT NOT NULL,
+                    "channel_id" TEXT NOT NULL,
                     "content" BYTEA NOT NULL,
                     "state" BYTEA,
                     "is_locked" BOOLEAN NOT NULL,
@@ -24,7 +24,7 @@ export const installTableMessage = {
             sql`
                 CREATE INDEX "message_dequeue_ix"
                 ON ${ref(params.schema)}."message" (
-                    "channel_name",
+                    "channel_id",
                     "dequeue_at" ASC,
                     "id" ASC
                 ) WHERE NOT "is_locked";

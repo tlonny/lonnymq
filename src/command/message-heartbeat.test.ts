@@ -1,4 +1,4 @@
-import { MessageCreateCommand } from "@src/command/message-create"
+import { MessageCreateCommand, type MessageCreateCommandResultMessageCreated } from "@src/command/message-create"
 import { MessageDequeueCommand } from "@src/command/message-dequeue"
 import { MessageHeartbeatCommand } from "@src/command/message-heartbeat"
 import { Queue } from "@src/queue"
@@ -21,9 +21,8 @@ beforeEach(async () => {
 test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
     await new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello")
     }).execute(pool)
 
@@ -54,9 +53,8 @@ test("MessageHeartbeatCommand keeps bumping the unlock_at", async () => {
 test("MessageHeartbeatCommand fails on invalid numAttempts", async () => {
     await new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello")
     }).execute(pool)
 
@@ -77,12 +75,11 @@ test("MessageHeartbeatCommand fails on invalid numAttempts", async () => {
 test("MessageHeartbeatCommand fails when not locked", async () => {
     const messageCreateCommand = new MessageCreateCommand({
         schema: SCHEMA,
-        channelName: "alpha",
-        offsetMs: null,
-        timestamp: null,
+        channelId: "alpha",
+        dequeueAt: null,
         content: Buffer.from("hello")
     })
-    const result = await messageCreateCommand.execute(pool)
+    const result = await messageCreateCommand.execute(pool) as MessageCreateCommandResultMessageCreated
 
     const messageHeartbeatResult = await new MessageHeartbeatCommand({
         schema: SCHEMA,

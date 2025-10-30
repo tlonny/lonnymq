@@ -15,7 +15,7 @@ type QueryResultMessageDequeued = {
     content: Buffer,
     metadata: {
         id: string,
-        channel_name: string,
+        channel_id: string,
         is_unlocked: boolean,
         num_attempts: number
     }
@@ -28,7 +28,7 @@ type QueryResult =
 export type MessageDequeueCommandResultMessageDequeued = {
     resultType: "MESSAGE_DEQUEUED",
     id: bigint,
-    channelName: string,
+    channelId: string,
     isUnlocked: boolean,
     content: Buffer,
     state: Buffer | null,
@@ -74,7 +74,7 @@ export class MessageDequeueCommand {
             return {
                 resultType: "MESSAGE_DEQUEUED",
                 id: BigInt(result.metadata.id),
-                channelName: result.metadata.channel_name,
+                channelId: result.metadata.channel_id,
                 isUnlocked: result.metadata.is_unlocked,
                 content: result.content,
                 state: result.state,

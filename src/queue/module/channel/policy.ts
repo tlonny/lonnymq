@@ -6,28 +6,30 @@ export class QueueChannelPolicyModule<T> {
 
     private readonly schema: string
     private readonly adaptor: DatabaseClientAdaptor<T>
-    private readonly channelName: string
+    private readonly channelId: string
 
     constructor(params: {
         schema: string,
         adaptor: DatabaseClientAdaptor<T>
-        channelName: string,
+        channelId: string,
     }) {
         this.schema = params.schema
         this.adaptor = params.adaptor
-        this.channelName = params.channelName
+        this.channelId = params.channelId
     }
 
     set(params : {
         databaseClient: T,
         maxConcurrency?: number | null,
+        maxSize?: number | null,
         releaseIntervalMs?: number | null
     }) {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new ChannelPolicySetCommand({
             schema: this.schema,
-            channelName: this.channelName,
+            channelId: this.channelId,
             maxConcurrency: params.maxConcurrency,
+            maxSize: params.maxSize,
             releaseIntervalMs: params.releaseIntervalMs
         }).execute(adaptedClient)
     }
@@ -38,7 +40,7 @@ export class QueueChannelPolicyModule<T> {
         const adaptedClient = this.adaptor(params.databaseClient)
         return new ChannelPolicyClearCommand({
             schema: this.schema,
-            channelName: this.channelName
+            channelId: this.channelId
         }).execute(adaptedClient)
     }
 

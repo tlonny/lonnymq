@@ -1,5 +1,6 @@
 export enum MessageCreateResultCode {
-    MESSAGE_CREATED
+    MESSAGE_CREATED,
+    MESSAGE_DROPPED
 }
 
 export enum MessageDequeueResultCode {

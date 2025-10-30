@@ -2,37 +2,51 @@ import { MessageCreateResultCode } from "@src/core/constant"
 import type { DatabaseClient } from "@src/core/database"
 import { ref, sql } from "@src/core/sql"
 
-type QueryResult = {
+type QueryResultMessageCreated = {
     result_code: MessageCreateResultCode.MESSAGE_CREATED,
     metadata: { id: string, channel_size: number }
 }
 
-export type MessageCreateCommandResult = {
+type QueryResultMessageDropped = {
+    result_code: MessageCreateResultCode.MESSAGE_DROPPED,
+    metadata: null
+}
+
+type QueryResult =
+    | QueryResultMessageCreated
+    | QueryResultMessageDropped
+
+export type MessageCreateCommandResultMessageCreated = {
     resultType: "MESSAGE_CREATED",
     id: bigint,
-    channelSize: number,
+    channelSize: number
 }
+
+export type MessageCreateCommandResultMessageDropped = {
+    resultType: "MESSAGE_DROPPED"
+}
+
+export type MessageCreateCommandResult =
+    | MessageCreateCommandResultMessageCreated
+    | MessageCreateCommandResultMessageDropped
 
 export class MessageCreateCommand {
 
     readonly schema: string
-    readonly channelName: string
+    readonly channelId: string
     readonly content: Buffer
-    readonly offsetMs: number | null
-    readonly timestamp: number | null
+    readonly dequeueAt: number | null
 
     constructor(params: {
         schema: string,
-        channelName: string,
+        channelId: string,
         content: Buffer,
-        offsetMs: number | null,
-        timestamp: number | null
+        dequeueAt: number | null
     }) {
         this.schema = params.schema
-        this.channelName = params.channelName
+        this.channelId = params.channelId
         this.content = params.content
-        this.offsetMs = params.offsetMs
-        this.timestamp = params.timestamp
+        this.dequeueAt = params.dequeueAt
     }
 
     async execute(databaseClient: DatabaseClient): Promise<MessageCreateCommandResult> {
@@ -43,14 +57,12 @@ export class MessageCreateCommand {
             FROM ${ref(this.schema)}."message_create"(
                 $1, 
                 $2,
-                $3::BIGINT,
-                $4::BIGINT
+                $3::BIGINT
             )
         `.value, [
-            this.channelName,
+            this.channelId,
             this.content,
-            this.timestamp,
-            this.offsetMs
+            this.dequeueAt
         ]).then(res => res.rows[0] as QueryResult)
 
         if (result.result_code === MessageCreateResultCode.MESSAGE_CREATED) {
@@ -59,7 +71,12 @@ export class MessageCreateCommand {
                 id: BigInt(result.metadata.id),
                 channelSize: result.metadata.channel_size,
             }
+        } else if (result.result_code === MessageCreateResultCode.MESSAGE_DROPPED) {
+            return {
+                resultType: "MESSAGE_DROPPED"
+            }
         } else {
+            result satisfies never
             throw new Error("Unexpected result code")
         }
     }

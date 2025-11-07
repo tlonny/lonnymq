@@ -34,7 +34,7 @@ test("messageLockedDequeueQuery uses index scans", async () => {
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")
-        await client.release()
+        client.release()
     }
 })
 
@@ -54,7 +54,7 @@ test("channelDequeueQuery uses index scans", async () => {
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")
-        await client.release()
+        client.release()
     }
 })
 
@@ -74,6 +74,6 @@ test("messageNextDequeueQuery uses index scans", async () => {
         await client.query("COMMIT")
     } finally {
         client.query("ROLLBACK")
-        await client.release()
+        client.release()
     }
 })

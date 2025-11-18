@@ -9,6 +9,9 @@
       "require": "./dist/index.cjs"
     }
   },
+  "repository": {
+    "url": "https://github.com/tlonny/lonnymq"
+  },
   "files": ["dist"],
   "devDependencies": {
     "@stylistic/eslint-plugin-ts": "4.2.0",

@@ -1,6 +1,6 @@
 # LonnyMQ
 
-A high-performance, multi-tenant PostgreSQL message queue implementation for Node.js/TypeScript. Docs can be found [here](https://tlonny.github.io/lonnymq)
+A high-performance, multi-tenant PostgreSQL message queue implementation for Node.js/TypeScript.
 
 ## Features
 

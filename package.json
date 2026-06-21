@@ -11,7 +11,7 @@
     }
   },
   "repository": {
-    "url": "git+https://github.com/lonnycorp/lonnymq.git"
+    "url": "git+https://github.com/tlonny/lonnymq.git"
   },
   "publishConfig": {
     "access": "public"

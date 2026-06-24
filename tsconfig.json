@@ -6,7 +6,8 @@
       "module": "ESNext",
       "moduleDetection": "force",
       "paths": {
-        "@src/*": ["./src/*"],
+        "@lonnymq/*": ["./lonnymq/src/*"],
+        "@www/*": ["./www/src/*"],
       },
   
       // Bundler mode

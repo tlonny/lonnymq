@@ -20,7 +20,7 @@
     "dist/lonnymq"
   ],
   "scripts": {
-    "build:lonnymq": "bun lonnymq/build.ts",
+    "build": "bun build.ts",
     "build:www": "bun www/build.ts",
     "check": "bun run typecheck && bun run lint && bun run test",
     "lint": "bun eslint --max-warnings=0",

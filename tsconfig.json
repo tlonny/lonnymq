@@ -6,7 +6,7 @@
       "module": "ESNext",
       "moduleDetection": "force",
       "paths": {
-        "@lonnymq/*": ["./lonnymq/src/*"],
+        "@src/*": ["./src/*"],
         "@www/*": ["./www/src/*"],
       },
   

@@ -1,7 +1,7 @@
 # LonnyMQ
 
 ![Check](https://github.com/tlonny/lonnymq/actions/workflows/check.yml/badge.svg)
-![Release LonnyMQ](https://github.com/tlonny/lonnymq/actions/workflows/release-lonnymq.yml/badge.svg)
+![Release](https://github.com/tlonny/lonnymq/actions/workflows/release.yml/badge.svg)
 ![Release WWW](https://github.com/tlonny/lonnymq/actions/workflows/release-www.yml/badge.svg)
 
 ## Installation

@@ -12,9 +12,7 @@ export const epoch = (params : {
                 v_now TIMESTAMPTZ;
             BEGIN
                 v_now := NOW();
-                RETURN 
-                    EXTRACT(EPOCH FROM v_now)::BIGINT * 1_000 +
-                    EXTRACT(MILLISECOND FROM v_now)::BIGINT;
+                RETURN FLOOR(EXTRACT(EPOCH FROM v_now) * 1_000)::BIGINT;
             END;
             $$ LANGUAGE plpgsql;
         `

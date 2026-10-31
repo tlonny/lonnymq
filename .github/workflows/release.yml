@@ -18,7 +18,7 @@ jobs:
           bun-version: 1.3.5
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       - name: Check release tag
         run: |
@@ -31,5 +31,5 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
       - run: bun ci
       - run: bun run build
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@12
       - run: npm publish

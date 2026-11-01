@@ -8,10 +8,10 @@ export class Footer implements node.Buildable {
         .style("color", COLOR.Link)
         .style("font-size", "0.72rem")
         .style("line-height", "1.5")
-        .style("margin", "48px 0 0")
+        .style("margin", "0")
         .style("padding", "8px 24px")
         .style("text-align", "center")
-        .style("width", "calc(100% + 48px)")
+        .style("width", "100%")
         .child(new node.Text("Created by the "))
         .child(
             new node.Element("a")

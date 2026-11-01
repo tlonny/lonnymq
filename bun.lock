@@ -5,7 +5,7 @@
     "": {
       "name": "@lonnycorp/lonnymq",
       "devDependencies": {
-        "@lonnycorp/htmlforge": "0.1.2",
+        "@lonnycorp/htmlforge": "0.2.0",
         "@stylistic/eslint-plugin-ts": "4.2.0",
         "@types/bun": "latest",
         "@types/mdast": "^4.0.4",
@@ -71,7 +71,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@lonnycorp/htmlforge": ["@lonnycorp/htmlforge@0.1.2", "", {}, "sha512-IXgDDzb34tYz+/FeXeVRkjRMCNK5/ecMVeLi/3QpWIrFb9zuhxTZsGFTD517VhJsa6U1B/dVmoQRupiaa2EzmQ=="],
+    "@lonnycorp/htmlforge": ["@lonnycorp/htmlforge@0.2.0", "", {}, "sha512-nuAAzYsbhTwENwWAarkQla+563CqTAqjwv5p+9hIF70Y7AqZD//YHfriG/DfuWmdkXC8AlrQ9394RsLN+iCZYA=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.4", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow=="],
 

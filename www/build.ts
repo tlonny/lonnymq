@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "fs"
 import { dirname, join } from "path"
-import { Document, node } from "@lonnycorp/htmlforge"
+import { css, Document, node } from "@lonnycorp/htmlforge"
 import { Footer } from "@www/component/footer.ts"
 import { Helmet } from "@www/component/helmet.ts"
 import { IMAGES } from "@www/constant.ts"
@@ -20,18 +20,21 @@ const renderPage = (path: string, page: node.Buildable) => {
     const doc = new Document()
 
     doc.attribute("lang", "en")
-    doc.attribute("style", "background: #000000;")
     doc.head.child(new Helmet({ title: "LonnyMQ" }))
     styleBody(doc.body)
     const content = new node.Element("div")
-        .style("background", "#111111")
-        .style("box-sizing", "border-box")
-        .style("display", "flex")
-        .style("flex-direction", "column")
-        .style("align-items", "center")
-        .style("flex", "1")
-        .style("width", "100%")
-        .style("padding", "24px 24px 48px")
+        .css(cls => css.css`
+            .${cls} {
+                background: #111111;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                flex: 1;
+                width: 100%;
+                padding: 24px 24px 48px;
+            }
+        `)
     doc.body.child(content.child(page))
     doc.body.child(new Footer())
 

@@ -1,5 +1,5 @@
 import type { Strong as MdastStrong } from "mdast"
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { Phrasing } from "@www/component/markdown/phrasing.ts"
 import { COLOR } from "@www/constant.ts"
 
@@ -8,8 +8,12 @@ export class Strong implements node.Buildable {
 
     constructor(strong: MdastStrong) {
         this.root = new node.Element("span")
-            .style("color", COLOR.Brand)
-            .style("font-weight", "700")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR.Brand};
+                    font-weight: 700;
+                }
+            `)
             .child(new Phrasing(strong.children))
     }
 

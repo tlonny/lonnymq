@@ -1,6 +1,5 @@
 import type { ListItem as MdastListItem } from "mdast"
 import { node } from "@lonnycorp/htmlforge"
-import { Blocks } from "@www/component/markdown/blocks.ts"
 import { Phrasing } from "@www/component/markdown/phrasing.ts"
 
 export class ListItem implements node.Buildable {
@@ -12,7 +11,7 @@ export class ListItem implements node.Buildable {
             return
         }
 
-        this.root = new Blocks(item.children, { compactParagraphs: true })
+        throw new Error("Markdown list items must contain a single paragraph")
     }
 
     build() {

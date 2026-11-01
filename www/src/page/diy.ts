@@ -1,6 +1,6 @@
 import { readFileSync } from "fs"
 import { join } from "path"
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { Content } from "@www/component/content.ts"
 import { Main } from "@www/component/main.ts"
 import { Markdown } from "@www/component/markdown/index.ts"
@@ -64,18 +64,24 @@ type DiyNavPlacement = "top" | "bottom"
 
 class DiyNav implements node.Buildable {
     private readonly root = new node.Element("nav")
-        .style("display", "flex")
-        .style("flex-wrap", "wrap")
-        .style("gap", "6px")
-        .style("justify-content", "center")
-        .style("line-height", "1.5")
+        .css(cls => css.css`
+            .${cls} {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                justify-content: center;
+                line-height: 1.5;
+            }
+        `)
 
     constructor(
         chapters: DiyChapter[],
         private readonly selectedKey: DiyChapterKey,
         placement: DiyNavPlacement
     ) {
-        this.root.style("margin", placement === "top" ? "0 0 24px" : "32px 0 0")
+        this.root.css(cls => css.css`
+            .${cls} { margin: ${placement === "top" ? "0 0 24px" : "32px 0 0"}; }
+        `)
 
         const selectedIndex = chapters.findIndex((chapter) => chapter.key === selectedKey)
         const previous = selectedIndex > 0 ? chapters[selectedIndex - 1] : null
@@ -109,46 +115,68 @@ class DiyNav implements node.Buildable {
     private createLink(chapter: DiyChapter) {
         if (chapter.key === this.selectedKey) {
             return new node.Element("span")
-                .style("color", COLOR.Inactive)
-                .style("font-weight", "700")
-                .style("padding", "0 2px")
+                .css(cls => css.css`
+                    .${cls} {
+                        color: ${COLOR.Inactive};
+                        font-weight: 700;
+                        padding: 0 2px;
+                    }
+                `)
                 .child(new node.Text(chapter.label))
         }
 
         return new node.Element("a")
             .attribute("href", chapter.href)
-            .style("color", COLOR.Link)
-            .style("background", COLOR.LinkHoverBackground, { pseudoSelector: ":hover" })
-            .style("color", COLOR.LinkHoverText, { pseudoSelector: ":hover" })
-            .style("font-weight", "700")
-            .style("padding", "0 2px")
-            .style("text-decoration", "underline")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR.Link};
+                    font-weight: 700;
+                    padding: 0 2px;
+                    text-decoration: underline;
+                }
+                .${cls}:hover {
+                    background: ${COLOR.LinkHoverBackground};
+                    color: ${COLOR.LinkHoverText};
+                }
+            `)
             .child(new node.Text(chapter.label))
     }
 
     private createPagerLink(label: string, chapter: DiyChapter | null) {
         if (chapter === null) {
             return new node.Element("span")
-                .style("color", COLOR.Inactive)
-                .style("font-weight", "700")
-                .style("padding", "0 2px")
+                .css(cls => css.css`
+                    .${cls} {
+                        color: ${COLOR.Inactive};
+                        font-weight: 700;
+                        padding: 0 2px;
+                    }
+                `)
                 .child(new node.Text(label))
         }
 
         return new node.Element("a")
             .attribute("href", chapter.href)
-            .style("color", COLOR.Link)
-            .style("background", COLOR.LinkHoverBackground, { pseudoSelector: ":hover" })
-            .style("color", COLOR.LinkHoverText, { pseudoSelector: ":hover" })
-            .style("font-weight", "700")
-            .style("padding", "0 2px")
-            .style("text-decoration", "underline")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR.Link};
+                    font-weight: 700;
+                    padding: 0 2px;
+                    text-decoration: underline;
+                }
+                .${cls}:hover {
+                    background: ${COLOR.LinkHoverBackground};
+                    color: ${COLOR.LinkHoverText};
+                }
+            `)
             .child(new node.Text(label))
     }
 
     private createSeparator() {
         return new node.Element("span")
-            .style("color", COLOR.Link)
+            .css(cls => css.css`
+                .${cls} { color: ${COLOR.Link}; }
+            `)
             .child(new node.Text("|"))
     }
 }

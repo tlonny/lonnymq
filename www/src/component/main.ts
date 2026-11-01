@@ -1,4 +1,4 @@
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { Logo } from "@www/component/logo.ts"
 import { Nav, type MainNavKey } from "@www/component/nav.ts"
 
@@ -8,10 +8,14 @@ type MainOptions = {
 
 export class Main implements node.Buildable {
     private readonly root = new node.Element("main")
-        .style("box-sizing", "border-box")
-        .style("flex", "1 0 auto")
-        .style("max-width", "980px")
-        .style("width", "100%")
+        .css(cls => css.css`
+            .${cls} {
+                box-sizing: border-box;
+                flex: 1 0 auto;
+                max-width: 980px;
+                width: 100%;
+            }
+        `)
 
     constructor(options: MainOptions = {}) {
         this.root

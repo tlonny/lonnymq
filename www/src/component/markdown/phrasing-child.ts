@@ -1,9 +1,7 @@
 import type { PhrasingContent } from "mdast"
 import { node } from "@lonnycorp/htmlforge"
-import { Break } from "@www/component/markdown/break.ts"
 import { Emphasis } from "@www/component/markdown/emphasis.ts"
 import { InlineCode } from "@www/component/markdown/inline-code.ts"
-import { Link } from "@www/component/markdown/link.ts"
 import { Strong } from "@www/component/markdown/strong.ts"
 import { Text } from "@www/component/markdown/text.ts"
 
@@ -28,16 +26,6 @@ export class PhrasingChild implements node.Buildable {
 
         if (child.type === "strong") {
             this.root = new Strong(child)
-            return
-        }
-
-        if (child.type === "link") {
-            this.root = new Link(child)
-            return
-        }
-
-        if (child.type === "break") {
-            this.root = new Break()
             return
         }
 

@@ -4,7 +4,7 @@ import { FAVICON } from "@www/constant.ts"
 const HIGHLIGHT_CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/base16/gruvbox-dark-hard.min.css"
 const HIGHLIGHT_SCRIPT_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
 const HIGHLIGHT_POSTGRES_SCRIPT_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/pgsql.min.js"
-const HIGHLIGHT_INIT_SCRIPT = String.raw`
+const HIGHLIGHT_INIT_SCRIPT = `
 document.addEventListener("DOMContentLoaded", () => {
     if (!window.hljs) {
         return

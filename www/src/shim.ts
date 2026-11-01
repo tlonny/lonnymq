@@ -1,12 +1,11 @@
 import { node } from "@lonnycorp/htmlforge"
 import { COLOR } from "@www/constant.ts"
 
-const BACKGROUND = "#111111"
 const INK = COLOR.Brand
 
 export const styleBody = (body: node.Element) => {
     body
-        .style("background", BACKGROUND)
+        .style("background", "#000000")
         .style("box-sizing", "border-box")
         .style("font-size", "0.8rem")
         .style("color", INK)
@@ -17,5 +16,5 @@ export const styleBody = (body: node.Element) => {
         .style("justify-content", "flex-start")
         .style("margin", "0")
         .style("min-height", "100vh")
-        .style("padding", "24px 24px 0")
+        .style("padding", "0")
 }

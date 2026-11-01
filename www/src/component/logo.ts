@@ -1,7 +1,7 @@
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { COLOR } from "@www/constant.ts"
 
-const LOGO = String.raw`
+const LOGO = `
 888                                         888b     d888  .d88888b.  
 888                                         8888b   d8888 d88P" "Y88b 
 888                                         88888b.d88888 888     888 
@@ -39,16 +39,26 @@ const interpolateColor = (start: string, end: string, ratio: number) => {
 
 export class Logo implements node.Buildable {
     private readonly logo = new node.Element("pre")
-        .style("display", "block")
-        .style("margin", "0")
-        .style("width", "max-content")
-        .style("white-space", "pre")
+        .css(cls => css.css`
+            .${cls} {
+                display: block;
+                margin: 0;
+                width: max-content;
+                white-space: pre;
+            }
+        `)
 
     private readonly root = new node.Element("div")
-        .style("display", "flex")
-        .style("display", "none", { mediaQuery: "@media (max-width: 640px)" })
-        .style("justify-content", "center")
-        .style("margin-top", "24px")
+        .css(cls => css.css`
+            .${cls} {
+                display: flex;
+                justify-content: center;
+                margin-top: 24px;
+            }
+            @media (max-width: 640px) {
+                .${cls} { display: none; }
+            }
+        `)
         .child(this.logo)
 
     constructor() {
@@ -58,7 +68,9 @@ export class Logo implements node.Buildable {
             this.logo
                 .child(
                     new node.Element("span")
-                        .style("color", interpolateColor(GRADIENT_START, GRADIENT_END, ratio))
+                        .css(cls => css.css`
+                            .${cls} { color: ${interpolateColor(GRADIENT_START, GRADIENT_END, ratio)}; }
+                        `)
                         .child(new node.Text(LOGO_LINES[index]))
                 )
                 .child(new node.Text(index === LOGO_LINES.length - 1 ? "" : "\n"))

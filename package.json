@@ -28,7 +28,7 @@
     "typecheck": "bun tsc --noEmit"
   },
   "devDependencies": {
-    "@lonnycorp/htmlforge": "0.1.2",
+    "@lonnycorp/htmlforge": "0.2.0",
     "@stylistic/eslint-plugin-ts": "4.2.0",
     "@types/bun": "latest",
     "@types/mdast": "^4.0.4",

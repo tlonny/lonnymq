@@ -1,27 +1,37 @@
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { COLOR } from "@www/constant.ts"
 
 export class Footer implements node.Buildable {
     private readonly root = new node.Element("footer")
-        .style("background", "#000000")
-        .style("box-sizing", "border-box")
-        .style("color", COLOR.Link)
-        .style("font-size", "0.72rem")
-        .style("line-height", "1.5")
-        .style("margin", "0")
-        .style("padding", "8px 24px")
-        .style("text-align", "center")
-        .style("width", "100%")
+        .css(cls => css.css`
+            .${cls} {
+                background: #000000;
+                box-sizing: border-box;
+                color: ${COLOR.Link};
+                font-size: 0.72rem;
+                line-height: 1.5;
+                margin: 0;
+                padding: 8px 24px;
+                text-align: center;
+                width: 100%;
+            }
+        `)
         .child(new node.Text("Created by the "))
         .child(
             new node.Element("a")
                 .attribute("href", "https://www.lonnycorp.com")
-                .style("color", COLOR.Link)
-                .style("background", COLOR.LinkHoverBackground, { pseudoSelector: ":hover" })
-                .style("color", COLOR.LinkHoverText, { pseudoSelector: ":hover" })
-                .style("font-weight", "700")
-                .style("padding", "0 2px")
-                .style("text-decoration", "underline")
+                .css(cls => css.css`
+                    .${cls} {
+                        color: ${COLOR.Link};
+                        font-weight: 700;
+                        padding: 0 2px;
+                        text-decoration: underline;
+                    }
+                    .${cls}:hover {
+                        background: ${COLOR.LinkHoverBackground};
+                        color: ${COLOR.LinkHoverText};
+                    }
+                `)
                 .child(new node.Text("Lonny Corporation"))
         )
 

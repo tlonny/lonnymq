@@ -1,18 +1,16 @@
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { COLOR } from "@www/constant.ts"
 
 export enum Kind {
     H1 = "h1",
     H2 = "h2",
     H3 = "h3",
-    H4 = "h4",
 }
 
 const COLOR_BY_KIND: Record<Kind, string> = {
     [Kind.H1]: COLOR.Brand,
     [Kind.H2]: "#C2FF2B",
     [Kind.H3]: "#CEFF55",
-    [Kind.H4]: "#DBFF80",
 }
 
 export class Heading implements node.Buildable {
@@ -22,12 +20,16 @@ export class Heading implements node.Buildable {
         const style = getStyle(kind)
 
         this.root = new node.Element(kind)
-            .style("color", COLOR_BY_KIND[kind])
-            .style("font-size", style.fontSize)
-            .style("font-weight", "700")
-            .style("line-height", "1.2")
-            .style("margin", style.margin)
-            .style("text-transform", "uppercase")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR_BY_KIND[kind]};
+                    font-size: ${style.fontSize};
+                    font-weight: 700;
+                    line-height: 1.2;
+                    margin: ${style.margin};
+                    text-transform: uppercase;
+                }
+            `)
     }
 
     child(child: node.Buildable | string) {
@@ -53,10 +55,6 @@ export const kindFromDepth = (depth: number) => {
         return Kind.H3
     }
 
-    if (depth === 4) {
-        return Kind.H4
-    }
-
     throw new Error(`Markdown heading depth is not supported: ${depth}`)
 }
 
@@ -75,15 +73,8 @@ const getStyle = (kind: Kind) => {
         }
     }
 
-    if (kind === Kind.H3) {
-        return {
-            fontSize: "1rem",
-            margin: "28px 0 14px",
-        }
-    }
-
     return {
-        fontSize: "0.9rem",
-        margin: "22px 0 12px",
+        fontSize: "1rem",
+        margin: "28px 0 14px",
     }
 }

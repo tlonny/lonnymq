@@ -1,4 +1,4 @@
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { COLOR } from "@www/constant.ts"
 
 type Link = {
@@ -30,14 +30,19 @@ export class Nav implements node.Buildable {
     private readonly selectedKey?: MainNavKey
 
     private readonly root = new node.Element("nav")
-        .style("display", "flex")
-        .style("flex-wrap", "wrap")
-        .style("gap", "8px")
-        .style("justify-content", "center")
-        .style("line-height", "1.5")
-        .style("margin", "34px 0 0")
-        .style("gap", "6px", { mediaQuery: "@media (max-width: 640px)" })
-        .style("margin", "12px 0 0", { mediaQuery: "@media (max-width: 640px)" })
+        .css(cls => css.css`
+            .${cls} {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+                line-height: 1.5;
+                margin: 34px 0 0;
+            }
+            @media (max-width: 640px) {
+                .${cls} { gap: 6px; margin: 12px 0 0; }
+            }
+        `)
 
     constructor(options: NavOptions = {}) {
         const links = options.links ?? LINKS
@@ -46,10 +51,16 @@ export class Nav implements node.Buildable {
         this.root
             .child(
                 new node.Element("span")
-                    .style("color", COLOR.Brand)
-                    .style("display", "none")
-                    .style("display", "inline", { mediaQuery: "@media (max-width: 640px)" })
-                    .style("font-weight", "700")
+                    .css(cls => css.css`
+                        .${cls} {
+                            color: ${COLOR.Brand};
+                            display: none;
+                            font-weight: 700;
+                        }
+                        @media (max-width: 640px) {
+                            .${cls} { display: inline; }
+                        }
+                    `)
                     .child(new node.Text("LonnyMQ"))
             )
             .child(this.createSeparator({ mobileOnly: true }))
@@ -72,32 +83,47 @@ export class Nav implements node.Buildable {
     private createLink(link: Link) {
         if (link.key === this.selectedKey) {
             return new node.Element("span")
-                .style("color", COLOR.Inactive)
-                .style("font-weight", "700")
-                .style("padding", "0 2px")
+                .css(cls => css.css`
+                    .${cls} {
+                        color: ${COLOR.Inactive};
+                        font-weight: 700;
+                        padding: 0 2px;
+                    }
+                `)
                 .child(new node.Text(link.label))
         }
 
         return new node.Element("a")
             .attribute("href", link.href)
-            .style("color", COLOR.Link)
-            .style("background", COLOR.LinkHoverBackground, { pseudoSelector: ":hover" })
-            .style("color", COLOR.LinkHoverText, { pseudoSelector: ":hover" })
-            .style("font-weight", "700")
-            .style("padding", "0 2px")
-            .style("text-decoration", "underline")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR.Link};
+                    font-weight: 700;
+                    padding: 0 2px;
+                    text-decoration: underline;
+                }
+                .${cls}:hover {
+                    background: ${COLOR.LinkHoverBackground};
+                    color: ${COLOR.LinkHoverText};
+                }
+            `)
             .child(new node.Text(link.label))
     }
 
     private createSeparator(options?: { mobileOnly?: boolean }) {
         const separator = new node.Element("span")
-            .style("color", COLOR.Link)
+            .css(cls => css.css`
+                .${cls} { color: ${COLOR.Link}; }
+            `)
             .child(new node.Text("|"))
 
         if (options?.mobileOnly) {
-            separator
-                .style("display", "none")
-                .style("display", "inline", { mediaQuery: "@media (max-width: 640px)" })
+            separator.css(cls => css.css`
+                .${cls} { display: none; }
+                @media (max-width: 640px) {
+                    .${cls} { display: inline; }
+                }
+            `)
         }
 
         return separator

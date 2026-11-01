@@ -1,5 +1,5 @@
 import type { Emphasis as MdastEmphasis } from "mdast"
-import { node } from "@lonnycorp/htmlforge"
+import { css, node } from "@lonnycorp/htmlforge"
 import { Phrasing } from "@www/component/markdown/phrasing.ts"
 import { COLOR } from "@www/constant.ts"
 
@@ -8,8 +8,12 @@ export class Emphasis implements node.Buildable {
 
     constructor(emphasis: MdastEmphasis) {
         this.root = new node.Element("span")
-            .style("color", COLOR.Brand)
-            .style("font-style", "italic")
+            .css(cls => css.css`
+                .${cls} {
+                    color: ${COLOR.Brand};
+                    font-style: italic;
+                }
+            `)
             .child(new Phrasing(emphasis.children))
     }
 
